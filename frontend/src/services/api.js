@@ -25,3 +25,7 @@ export const rentVsBuy = (id, body) =>
 export const generateAIReport = (id) =>
   request(`/items/${id}/ai-report`, { method: 'POST' })
 export const seedDatabase = () => request('/seed', { method: 'POST' })
+export const refreshPrices = () =>
+  fetch(`${BASE_URL}/refresh-prices`, { method: 'POST' })
+    .then(r => r.ok ? r.json() : null)
+    .catch(() => null)

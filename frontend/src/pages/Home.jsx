@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SearchBar from '../components/SearchBar'
-import { getItemOverview, seedDatabase } from '../services/api'
+import { getItemOverview, seedDatabase, refreshPrices } from '../services/api'
 import { formatCNY, formatPercent } from '../utils/formatters'
 import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS } from '../utils/constants'
 
@@ -69,6 +69,8 @@ export default function Home() {
   const [recentEvents, setRecentEvents] = useState([])
   const [seeding, setSeeding] = useState(false)
   const [seedDone, setSeedDone] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshResult, setRefreshResult] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -118,6 +120,20 @@ export default function Home() {
     }
   }
 
+  async function handleRefresh() {
+    setRefreshing(true)
+    setRefreshResult(null)
+    const res = await refreshPrices()
+    setRefreshing(false)
+    if (res) {
+      setRefreshResult(res)
+      setTimeout(() => {
+        loadHotItems()
+        setRefreshResult(null)
+      }, 3000)
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
       {/* Hero */}
@@ -153,12 +169,29 @@ export default function Home() {
         </div>
       )}
 
-      {/* Seed button (top right style when data exists) */}
+      {/* Action buttons */}
       {hotItems.length > 0 && (
-        <div className="flex justify-end mb-6">
+        <div className="flex items-center justify-end gap-2 mb-6">
+          {refreshResult && (
+            <span className="text-xs text-green-400 mr-2">
+              ✓ 已更新 {refreshResult.fetched} 个饰品的实时价格
+            </span>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || seeding}
+            className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-400/50 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+          >
+            {refreshing ? (
+              <>
+                <div className="w-3 h-3 border border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
+                拉取中... (约15秒)
+              </>
+            ) : '拉取实时价格'}
+          </button>
           <button
             onClick={handleSeed}
-            disabled={seeding}
+            disabled={seeding || refreshing}
             className="text-xs text-slate-500 hover:text-slate-400 border border-slate-700 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
           >
             {seeding ? '重置中...' : seedDone ? '完成！' : '重置示例数据'}

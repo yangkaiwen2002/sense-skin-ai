@@ -7,6 +7,7 @@ from app.database import engine, get_db, Base
 import app.models  # noqa: register all models
 
 from app.routers import items, analytics, compare, rental, reports
+from app.services.price_fetcher import refresh_all_prices
 
 app = FastAPI(title="SkinSense AI", version="1.0.0")
 
@@ -34,6 +35,12 @@ app.include_router(reports.router, prefix="/api")
 @app.get("/")
 def root():
     return {"status": "ok", "service": "SkinSense AI"}
+
+
+@app.post("/api/refresh-prices")
+async def refresh_prices_endpoint(db: Session = Depends(get_db)):
+    """Fetch real-time prices from Steam Market and store as new snapshots."""
+    return await refresh_all_prices(db)
 
 
 @app.post("/api/seed")
