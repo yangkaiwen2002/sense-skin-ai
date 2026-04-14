@@ -288,7 +288,7 @@ hr{ border-color:#1a1a1a !important; }
 ::-webkit-scrollbar-thumb{ background:#222; border-radius:4px; }
 ::-webkit-scrollbar-thumb:hover{ background:#333; }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  HELPERS
@@ -306,6 +306,17 @@ def score_color(s: int) -> str:
     if s >= 75: return "#5cb85c"
     if s >= 55: return "#f0ad4e"
     return "#d9534f"
+
+def _md(html: str):
+    """Render HTML via st.markdown, stripping blank lines first.
+
+    CommonMark spec: a Type-6 HTML block (opening <div> etc.) ends at the
+    first blank line.  Blank lines inside interpolated f-strings cause
+    Streamlit to fall back to Markdown mode and display raw HTML tags.
+    Removing blank lines keeps the entire block in HTML mode.
+    """
+    clean = re.sub(r'\n[ \t]*\n', '\n', html).strip()
+    st.markdown(clean, unsafe_allow_html=True)
 
 LANG_OPTIONS = list(I18N.keys())   # ["中文", "English"]
 
@@ -422,7 +433,7 @@ def score_panel(sc: SkinScore):
   <div style="font-size:.69rem;color:#363636;line-height:1.5;margin-top:4px">{note}</div>
 </div>"""
 
-    st.markdown(f"""
+    _md(f"""
 <div style="background:linear-gradient(160deg,#141414 0%,#0e0e0e 100%);
             border:1px solid #1e1e1e;border-radius:14px;padding:1.4rem 1.25rem">
   <div style="padding:.6rem 0 1rem">{ring}</div>
@@ -432,7 +443,7 @@ def score_panel(sc: SkinScore):
     {T("sub_scores")}</div>
   {bars}
 </div>
-""", unsafe_allow_html=True)
+""")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  HERO SECTION  (skin image + name + key stats)
@@ -512,7 +523,7 @@ def hero_section(hash_name: str, ov: dict, sc: SkinScore, icon_url: str | None =
   <div style="font-size:.7rem;color:{c};opacity:.75;margin-top:3px">{sc.overall_label}</div>
 </div>"""
 
-    st.markdown(f"""
+    _md(f"""
 <div style="background:linear-gradient(140deg,#141414 0%,#0f0f0f 55%,#131313 100%);
             border:1px solid #202020;border-radius:16px;
             padding:1.5rem 1.75rem;margin-bottom:1.5rem;
@@ -539,7 +550,7 @@ def hero_section(hash_name: str, ov: dict, sc: SkinScore, icon_url: str | None =
   </div>
   {rating_badge}
 </div>
-""", unsafe_allow_html=True)
+""")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  MARKET TAB  (custom HTML histogram + percentile table)
@@ -635,7 +646,7 @@ def tab_market(ov: dict, ls: dict, sc: SkinScore):
         )
 
     dist_sub = T("dist_sub").format(n=len(prices))
-    st.markdown(f"""
+    _md(f"""
 <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.65rem;margin-bottom:1.5rem">
   {kpis}
 </div>
@@ -649,7 +660,7 @@ def tab_market(ov: dict, ls: dict, sc: SkinScore):
     {pct_html}
   </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  LISTINGS TAB  (color-coded by percentile, delta vs median)
@@ -717,7 +728,7 @@ def tab_listings(ls: dict, ov: dict):
         )
 
     listings_sub = T("listings_sub").format(total=ls.get("total", 0), n=len(listings))
-    st.markdown(f"""
+    _md(f"""
 <div style="font-size:.8rem;color:#bbb;font-weight:600;
             padding:.3rem 0 .7rem;border-bottom:1px solid #1a1a1a;margin-bottom:.9rem">
   {T("listings_title")}
@@ -726,7 +737,7 @@ def tab_listings(ls: dict, ov: dict):
 {header}
 <div style="border-radius:0 0 8px 8px;overflow:hidden;
             max-height:440px;overflow-y:auto">{rows}</div>
-""", unsafe_allow_html=True)
+""")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  AI AGENT TAB
@@ -738,7 +749,7 @@ def _chat(question: str, hash_name: str, sc: SkinScore):
     st.rerun()
 
 def tab_agent(hash_name: str, sc: SkinScore):
-    st.markdown(f"""
+    _md(f"""
 <div style="font-size:.8rem;color:#bbb;font-weight:600;
             padding:.3rem 0 .7rem;border-bottom:1px solid #1a1a1a;margin-bottom:1rem">
   {T("agent_title")}
@@ -746,7 +757,7 @@ def tab_agent(hash_name: str, sc: SkinScore):
 </div>
 <div style="font-size:.7rem;color:#383838;margin-bottom:.5rem;font-weight:500">
   {T("quick_q_label")}</div>
-""", unsafe_allow_html=True)
+""")
 
     presets = T("presets")
     cols = st.columns(len(presets))
@@ -784,7 +795,7 @@ def render_sidebar():
         # ── Logo ──────────────────────────────────────────────────────────
         dot_c = "#5cb85c" if st.session_state.connected else "#252525"
         ts    = st.session_state.last_fetched or T("not_connected")
-        st.markdown(f"""
+        _md(f"""
 <div style="padding:.75rem 1rem 1rem;border-bottom:1px solid #1a1a1a">
   <div style="font-size:1.15rem;font-weight:900;color:#f0f0f0;letter-spacing:-.02em">
     SkinSense <span style="color:#e05a00">AI</span>
@@ -797,7 +808,7 @@ def render_sidebar():
                  box-shadow:{'0 0 6px ' + dot_c if st.session_state.connected else 'none'}"></span>
     <span style="color:{dot_c}">{ts}</span>
   </div>
-</div>""", unsafe_allow_html=True)
+</div>""")
 
         # ── Current skin preview ───────────────────────────────────────────
         if st.session_state.connected and st.session_state.scores:
@@ -829,7 +840,7 @@ def render_sidebar():
                 if wear_abbr else ""
             )
 
-            st.markdown(f"""
+            _md(f"""
 <div style="margin:.9rem .9rem .3rem;background:linear-gradient(135deg,#141414,#0f0f0f);
             border:1px solid #1e1e1e;border-radius:12px;overflow:hidden;
             position:relative">
@@ -856,7 +867,7 @@ def render_sidebar():
     </div>
   </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
         st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
 
@@ -887,7 +898,7 @@ def render_sidebar():
                     f'<img src="{img}" style="width:40px;height:30px;object-fit:contain;flex-shrink:0"/>'
                     if img else '<div style="width:40px;height:30px;flex-shrink:0"></div>'
                 )
-                st.markdown(f"""
+                _md(f"""
 <div style="margin:.25rem .75rem;background:#111;border:1px solid #1d1d1d;
             border-radius:8px;padding:.45rem .65rem;
             display:flex;align-items:center;gap:.55rem">
@@ -897,11 +908,9 @@ def render_sidebar():
                 overflow:hidden;text-overflow:ellipsis">{item['name']}</div>
     <div style="font-size:.68rem;color:#e05a00;margin-top:1px">{price}</div>
   </div>
-</div>""", unsafe_allow_html=True)
-                st.markdown('<div style="margin:0 .75rem">', unsafe_allow_html=True)
+</div>""")
                 if st.button(T("analyze_btn"), key=f"sr_{item['hash_name']}"):
                     _fetch(item["hash_name"])
-                st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("<div style='height:.3rem'></div>", unsafe_allow_html=True)
         st.divider()
@@ -943,7 +952,7 @@ def render_sidebar():
                 f'font-weight:700">{wear_a}</span>'
                 if wear_a else ""
             )
-            st.markdown(f"""
+            _md(f"""
 <div style="margin:.25rem .75rem;background:{bg_c};border:1px solid {border_c};
             border-radius:8px;padding:.5rem .7rem">
   <div style="font-size:.68rem;color:#383838">{w_name}</div>
@@ -951,7 +960,7 @@ def render_sidebar():
     <span style="font-size:.78rem;font-weight:600;color:#ccc">{s_name}</span>
     {wear_b}
   </div>
-</div>""", unsafe_allow_html=True)
+</div>""")
             if st.button("▶", key=f"q_{hn}"):
                 _fetch(hn)
 
@@ -965,7 +974,7 @@ def empty_state():
     fd = T("feat_score_desc").replace("\n", "<br>")
     fm = T("feat_market_desc").replace("\n", "<br>")
     fa = T("feat_ai_desc").replace("\n", "<br>")
-    st.markdown(f"""
+    _md(f"""
 <div style="padding:3rem 0">
   <div style="text-align:center;margin-bottom:3rem">
     <div style="font-size:2rem;font-weight:900;color:#f0f0f0;letter-spacing:-.02em">
@@ -1006,7 +1015,7 @@ def empty_state():
     <div style="font-size:.72rem;color:#222">{T("empty_sub")}</div>
   </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  MAIN
@@ -1016,7 +1025,7 @@ def main():
     render_sidebar()
 
     # top nav
-    st.markdown(f"""
+    _md(f"""
 <div style="display:flex;align-items:center;justify-content:space-between;
             padding:.85rem 0 .7rem;border-bottom:1px solid #181818;margin-bottom:1.5rem">
   <div style="display:flex;align-items:center;gap:.45rem">
@@ -1026,7 +1035,7 @@ def main():
     <span style="font-size:.72rem;color:#2f2f2f">{T("nav_tagline")}</span>
   </div>
   <span style="font-size:.65rem;color:#1e1e1e">{T("nav_data_src")}</span>
-</div>""", unsafe_allow_html=True)
+</div>""")
 
     if not st.session_state.scores:
         empty_state()
