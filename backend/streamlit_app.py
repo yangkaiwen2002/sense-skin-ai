@@ -1,9 +1,8 @@
 """
-SkinSense · BUFF Market Intelligence
-CS2 饰品市场分析面板
+SkinSense · CS2 Skin AI Agent
+Steam Market data + rule-based scoring + AI chat
 
-Run from backend/:
-    streamlit run streamlit_app.py
+Run: streamlit run streamlit_app.py  (from backend/)
 """
 
 import streamlit as st
@@ -11,805 +10,533 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-from data_sources.buff_client import (
-    fetch_buff_sell_orders,
-    fetch_buff_goods_info,
-    fetch_buff_search,
+from data_sources.steam_client import (
+    fetch_price_overview,
+    fetch_listings,
+    search_items,
 )
+from scoring import compute, agent_reply, SkinScore
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  PAGE CONFIG
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="SkinSense · Market",
+    page_title="SkinSense AI",
     page_icon="🔫",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  CSS — CS2 / BUFF market aesthetic
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CSS = """
+# ─────────────────────────────────────────────────────────────────────────────
+#  CSS
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-/* ── base & reset ─────────────────────────────────────────────────────── */
-html, body { margin: 0; }
-.stApp {
-    background: #0a0e13;
-    background-image:
-        radial-gradient(ellipse at 20% 0%, rgba(77,182,212,0.04) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 100%, rgba(207,106,50,0.04) 0%, transparent 50%);
-}
-.block-container { padding: 0 2rem 2rem 2rem !important; max-width: 100% !important; }
-#MainMenu, footer { visibility: hidden; }
-[data-testid="stDecoration"] { display: none; }
+html,body,[class*="css"]{ font-family:'Inter',-apple-system,sans-serif; }
+.stApp{ background:#0f0f0f; }
+.block-container{ padding:0 1.5rem 2rem !important; max-width:100% !important; }
+#MainMenu,footer,header{ visibility:hidden; }
 
-/* ── sidebar ──────────────────────────────────────────────────────────── */
-section[data-testid="stSidebar"] {
-    background: #0d1520;
-    border-right: 1px solid #1a2d42;
-    padding-top: 0;
-}
-section[data-testid="stSidebar"] > div { padding-top: 0; }
+/* sidebar */
+section[data-testid="stSidebar"]{ background:#111; border-right:1px solid #1e1e1e; }
 
-/* ── inputs ───────────────────────────────────────────────────────────── */
-.stTextInput input, .stNumberInput input {
-    background: #0a1220 !important;
-    border: 1px solid #1e3a54 !important;
-    border-radius: 4px !important;
-    color: #c6d4df !important;
-    font-family: 'Inter', sans-serif !important;
-    font-size: 0.85rem !important;
-    padding: 0.45rem 0.75rem !important;
+/* inputs */
+.stTextInput input,.stNumberInput input{
+    background:#1a1a1a !important; border:1px solid #2a2a2a !important;
+    border-radius:6px !important; color:#e0e0e0 !important; font-size:.85rem !important;
 }
-.stTextInput input:focus, .stNumberInput input:focus {
-    border-color: #4db6d4 !important;
-    box-shadow: 0 0 0 1px rgba(77,182,212,0.2) !important;
+.stTextInput input:focus,.stNumberInput input:focus{
+    border-color:#e05a00 !important; box-shadow:0 0 0 2px rgba(224,90,0,.15) !important;
 }
-.stSelectbox > div > div {
-    background: #0a1220 !important;
-    border: 1px solid #1e3a54 !important;
-    border-radius: 4px !important;
-    color: #c6d4df !important;
+div[data-baseweb="select"]>div{
+    background:#1a1a1a !important; border:1px solid #2a2a2a !important;
+    border-radius:6px !important; color:#e0e0e0 !important;
 }
 
-/* ── buttons ──────────────────────────────────────────────────────────── */
-.stButton > button {
-    background: transparent;
-    border: 1px solid #4db6d4;
-    border-radius: 3px;
-    color: #4db6d4;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.82rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 0.4rem 1rem;
-    transition: all 0.15s ease;
+/* buttons */
+.stButton>button{
+    background:#e05a00; border:none; border-radius:6px; color:#fff;
+    font-weight:600; font-size:.83rem; padding:.45rem 1rem;
+    transition:background .15s; width:100%;
 }
-.stButton > button:hover {
-    background: rgba(77,182,212,0.12);
-    border-color: #7ecfe0;
-    color: #7ecfe0;
+.stButton>button:hover{ background:#f06510; }
+.stButton>button[kind="secondary"]{
+    background:#1e1e1e; border:1px solid #2a2a2a; color:#888;
 }
-.stButton > button[kind="primary"] {
-    background: #cf6a32;
-    border-color: #cf6a32;
-    color: #fff;
+.stButton>button[kind="secondary"]:hover{ background:#252525; color:#ddd; }
+
+/* metrics */
+[data-testid="metric-container"]{
+    background:#161616; border:1px solid #222;
+    border-radius:8px; padding:1rem 1.1rem;
 }
-.stButton > button[kind="primary"]:hover {
-    background: #e07a40;
-    border-color: #e07a40;
+[data-testid="stMetricLabel"]>div{
+    color:#555 !important; font-size:.73rem !important;
+    font-weight:500 !important;
+}
+[data-testid="stMetricValue"]{
+    color:#fff !important; font-size:1.4rem !important; font-weight:700 !important;
 }
 
-/* ── metrics ──────────────────────────────────────────────────────────── */
-[data-testid="metric-container"] {
-    background: #111822;
-    border: 1px solid #1a2d42;
-    border-top: 2px solid #cf6a32;
-    border-radius: 0 0 4px 4px;
-    padding: 0.9rem 1rem 0.75rem;
+/* tabs */
+.stTabs [data-baseweb="tab-list"]{
+    background:transparent !important; border-bottom:1px solid #1e1e1e; gap:0; padding:0;
 }
-[data-testid="stMetricLabel"] > div {
-    color: #7ea0b7 !important;
-    font-family: 'Rajdhani', sans-serif !important;
-    font-size: 0.72rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.08em !important;
-    text-transform: uppercase !important;
+.stTabs [data-baseweb="tab"]{
+    background:transparent !important; border:none;
+    border-bottom:2px solid transparent; border-radius:0 !important;
+    color:#555; font-size:.85rem; font-weight:500; padding:.6rem 1.25rem; transition:all .15s;
 }
-[data-testid="stMetricValue"] {
-    color: #c6d4df !important;
-    font-family: 'Rajdhani', sans-serif !important;
-    font-size: 1.5rem !important;
-    font-weight: 700 !important;
+.stTabs [data-baseweb="tab"]:hover{ color:#ccc; }
+.stTabs [aria-selected="true"]{
+    color:#e05a00 !important; border-bottom:2px solid #e05a00 !important;
+    background:transparent !important;
 }
-[data-testid="stMetricDelta"] {
-    font-size: 0.75rem !important;
-}
+.stTabs [data-baseweb="tab-panel"]{ padding:1.25rem 0 0; }
 
-/* ── tabs ─────────────────────────────────────────────────────────────── */
-.stTabs [data-baseweb="tab-list"] {
-    background: transparent !important;
-    border-bottom: 1px solid #1a2d42;
-    gap: 0;
-    padding: 0;
-}
-.stTabs [data-baseweb="tab"] {
-    background: transparent !important;
-    border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0 !important;
-    color: #7ea0b7;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    padding: 0.6rem 1.4rem;
-    text-transform: uppercase;
-    transition: all 0.15s;
-}
-.stTabs [data-baseweb="tab"]:hover { color: #c6d4df; background: rgba(255,255,255,0.03) !important; }
-.stTabs [aria-selected="true"] {
-    color: #4db6d4 !important;
-    border-bottom: 2px solid #4db6d4 !important;
-    background: transparent !important;
-}
-.stTabs [data-baseweb="tab-panel"] { padding: 1.25rem 0 0 0; }
+/* chat messages */
+[data-testid="stChatMessage"]{ background:#161616; border:1px solid #1e1e1e; border-radius:8px; }
 
-/* ── dataframe ────────────────────────────────────────────────────────── */
-[data-testid="stDataFrame"] {
-    border: 1px solid #1a2d42;
-    border-radius: 4px;
-    overflow: hidden;
-}
-[data-testid="stDataFrame"] th {
-    background: #0d1520 !important;
-    color: #7ea0b7 !important;
-    font-family: 'Rajdhani', sans-serif !important;
-    font-size: 0.72rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.06em !important;
-    text-transform: uppercase !important;
-}
-
-/* ── checkbox ─────────────────────────────────────────────────────────── */
-.stCheckbox > label { color: #7ea0b7; font-size: 0.82rem; }
-
-/* ── slider ───────────────────────────────────────────────────────────── */
-[data-testid="stSlider"] [data-testid="stThumbValue"] { color: #4db6d4; }
-
-/* ── divider ──────────────────────────────────────────────────────────── */
-hr { border-color: #1a2d42 !important; margin: 0.75rem 0 !important; }
-
-/* ── expander ─────────────────────────────────────────────────────────── */
-[data-testid="stExpander"] {
-    background: #111822;
-    border: 1px solid #1a2d42;
-    border-radius: 4px;
-}
-[data-testid="stExpander"] summary {
-    color: #7ea0b7;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
-/* ── scrollbar ────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0a0e13; }
-::-webkit-scrollbar-thumb { background: #1e3a54; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #2a4f70; }
+/* scrollbar */
+::-webkit-scrollbar{ width:5px; height:5px; }
+::-webkit-scrollbar-track{ background:#0f0f0f; }
+::-webkit-scrollbar-thumb{ background:#252525; border-radius:3px; }
 </style>
-"""
+""", unsafe_allow_html=True)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  HTML COMPONENT HELPERS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ─────────────────────────────────────────────────────────────────────────────
+#  QUICK ITEMS
+# ─────────────────────────────────────────────────────────────────────────────
+QUICK = [
+    ("AK-47 | 红线 FT",    "AK-47 | Redline (Field-Tested)"),
+    ("AWP | 龙狙 FT",      "AWP | Dragon Lore (Field-Tested)"),
+    ("沙漠之鹰 | 火焰 FN", "Desert Eagle | Blaze (Factory New)"),
+    ("M4A4 | 嚎叫 FT",     "M4A4 | Howl (Field-Tested)"),
+    ("蝴蝶刀 | 渐变 FN",   "Butterfly Knife | Fade (Factory New)"),
+    ("格洛克 | 渐变 FN",   "Glock-18 | Fade (Factory New)"),
+]
 
-# CS2 rarity colours ─ used for item card borders / accents
-RARITY = {
-    "Consumer":    "#b0c3d9",
-    "Industrial":  "#5e98d9",
-    "Mil-Spec":    "#4b69ff",
-    "Restricted":  "#8847ff",
-    "Classified":  "#d32ce6",
-    "Covert":      "#eb4b4b",
-    "Contraband":  "#e4ae39",
-}
-
-WEAR_LABEL = {
-    (0.00, 0.07): ("FN", "崭新出厂", "#4db6d4"),
-    (0.07, 0.15): ("MW", "略有磨损", "#5ba642"),
-    (0.15, 0.38): ("FT", "久经沙场", "#c6b441"),
-    (0.38, 0.45): ("WW", "破损不堪", "#cf6a32"),
-    (0.45, 1.00): ("BS", "战痕累累", "#c23b22"),
-}
-
-def wear_info(w: float | None):
-    if w is None:
-        return "—", "—", "#7ea0b7"
-    for (lo, hi), (short, zh, color) in WEAR_LABEL.items():
-        if lo <= w < hi:
-            return short, zh, color
-    return "BS", "战痕累累", "#c23b22"
-
-
-def panel_header(title: str, subtitle: str = "", accent: str = "#4db6d4"):
-    """Section divider styled like a CS2 UI panel label."""
-    sub_html = f'<span style="color:#4a6580;font-size:0.72rem;margin-left:0.75rem;font-family:Inter,sans-serif;font-weight:400">{subtitle}</span>' if subtitle else ""
-    st.markdown(f"""
-    <div style="
-        display:flex;align-items:center;gap:0;
-        margin:0.25rem 0 0.9rem;padding-bottom:0.5rem;
-        border-bottom:1px solid #1a2d42;">
-        <span style="
-            background:{accent};width:3px;height:1rem;
-            border-radius:1px;margin-right:0.6rem;display:inline-block"></span>
-        <span style="
-            font-family:'Rajdhani',sans-serif;font-weight:700;
-            font-size:0.82rem;letter-spacing:0.1em;text-transform:uppercase;
-            color:#c6d4df">{title}</span>
-        {sub_html}
-    </div>""", unsafe_allow_html=True)
-
-
-def sidebar_label(text: str):
-    st.markdown(
-        f'<div style="font-family:Rajdhani,sans-serif;font-size:0.7rem;font-weight:700;'
-        f'letter-spacing:0.1em;text-transform:uppercase;color:#4a6580;'
-        f'margin:0.9rem 0 0.25rem">{text}</div>',
-        unsafe_allow_html=True,
-    )
-
-
-def live_badge(ok: bool, ts: str | None = None):
-    if ok:
-        dot, label, color = "●", "LIVE", "#5ba642"
-    else:
-        dot, label, color = "●", "OFFLINE", "#c23b22"
-    ts_html = f'<span style="color:#4a6580;margin-left:6px;font-size:0.65rem">{ts}</span>' if ts else ""
-    st.markdown(
-        f'<div style="display:flex;align-items:center;gap:5px;'
-        f'font-family:Rajdhani,sans-serif;font-weight:700;font-size:0.72rem;'
-        f'letter-spacing:0.08em;color:{color}">'
-        f'<span style="font-size:0.55rem;animation:pulse 2s infinite">{dot}</span>'
-        f'&nbsp;{label}{ts_html}</div>',
-        unsafe_allow_html=True,
-    )
-
-
-def item_card_html(name_zh: str, name_en: str, sell_min: float | None,
-                   buy_max: float | None, sell_num: int | None,
-                   rarity_color: str = "#eb4b4b") -> str:
-    """Big item display card — like a CS2 inventory inspect panel."""
-    spread = round(sell_min - buy_max, 2) if sell_min and buy_max else None
-    spread_pct = round(spread / buy_max * 100, 1) if spread and buy_max else None
-    spread_str = f"¥{spread:.2f}  ({spread_pct}%)" if spread else "—"
-
-    return f"""
-    <div style="
-        background:linear-gradient(135deg,#111822 60%,#0d1824 100%);
-        border:1px solid #1a2d42;border-left:3px solid {rarity_color};
-        border-radius:4px;padding:1.2rem 1.4rem;margin-bottom:1rem;
-        box-shadow:0 4px 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.03)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.8rem">
-            <div>
-                <div style="
-                    font-family:'Rajdhani',sans-serif;font-weight:700;
-                    font-size:1.35rem;color:#e8eef2;letter-spacing:0.01em;
-                    line-height:1.1">{name_zh or "—"}</div>
-                <div style="
-                    font-family:'Inter',sans-serif;font-size:0.72rem;
-                    color:#4a6580;margin-top:3px;letter-spacing:0.03em">{name_en or ""}</div>
-            </div>
-            <div style="
-                background:rgba(207,106,50,0.1);border:1px solid rgba(207,106,50,0.3);
-                border-radius:3px;padding:2px 8px;
-                font-family:'Rajdhani',sans-serif;font-weight:700;
-                font-size:0.68rem;letter-spacing:0.12em;color:#cf6a32;
-                text-transform:uppercase;white-space:nowrap">BUFF · CSGO</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;
-                    border:1px solid #1a2d42;border-radius:3px;overflow:hidden">
-            {_stat_cell("最低卖价", f"¥ {sell_min:.2f}" if sell_min else "—", "#cf6a32", True)}
-            {_stat_cell("最高求购", f"¥ {buy_max:.2f}" if buy_max else "—", "#5ba642", False)}
-            {_stat_cell("买卖价差", spread_str, "#4db6d4", False)}
-            {_stat_cell("挂单数量", f"{sell_num:,} 件" if sell_num else "—", "#c6d4df", False)}
-        </div>
-    </div>"""
-
-
-def _stat_cell(label: str, value: str, color: str, first: bool) -> str:
-    border = "" if first else "border-left:1px solid #1a2d42;"
-    return f"""
-    <div style="padding:0.65rem 0.9rem;background:#0d1520;{border}">
-        <div style="font-family:'Rajdhani',sans-serif;font-size:0.65rem;font-weight:700;
-                    letter-spacing:0.1em;text-transform:uppercase;color:#4a6580;
-                    margin-bottom:3px">{label}</div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:1.05rem;
-                    font-weight:700;color:{color}">{value}</div>
-    </div>"""
-
-
-def order_row_html(idx: int, price: float, wear: float | None,
-                   seed: int | None, stickers: list[str],
-                   cooldown: str | None) -> str:
-    w_short, w_zh, w_color = wear_info(wear)
-    wear_str = f"{wear:.6f}" if wear is not None else "—"
-    sticker_html = ""
-    for s in stickers[:3]:
-        sticker_html += (
-            f'<span style="background:rgba(136,71,255,0.12);border:1px solid rgba(136,71,255,0.3);'
-            f'border-radius:2px;padding:1px 5px;font-size:0.65rem;color:#a87fef;'
-            f'margin-right:3px">{s}</span>'
-        )
-    if len(stickers) > 3:
-        sticker_html += f'<span style="color:#4a6580;font-size:0.65rem">+{len(stickers)-3}</span>'
-
-    tradable = not cooldown or cooldown == "可交易"
-    td_color  = "#5ba642" if tradable else "#cf6a32"
-    td_label  = "✓" if tradable else "⏱"
-
-    bg = "#0d1520" if idx % 2 == 0 else "#0a1118"
-
-    return f"""
-    <div style="
-        display:grid;grid-template-columns:2.5rem 6rem 7rem 5rem 1fr 4rem;
-        gap:0;align-items:center;padding:0.5rem 0.9rem;
-        background:{bg};border-bottom:1px solid rgba(26,45,66,0.5);
-        font-family:'Inter',sans-serif;font-size:0.8rem">
-        <div style="color:#4a6580;font-size:0.7rem">{idx+1:02d}</div>
-        <div style="font-family:'Rajdhani',sans-serif;font-size:1rem;
-                    font-weight:700;color:#cf6a32">¥ {price:.2f}</div>
-        <div>
-            <span style="color:{w_color};font-family:'Rajdhani',sans-serif;
-                         font-weight:700;font-size:0.78rem">{w_short}</span>
-            <span style="color:#4a6580;font-size:0.68rem;margin-left:4px">{wear_str}</span>
-        </div>
-        <div style="color:#7ea0b7;font-size:0.72rem">{f"#{seed}" if seed else "—"}</div>
-        <div>{sticker_html if sticker_html else '<span style="color:#2a3d52">—</span>'}</div>
-        <div style="color:{td_color};font-size:0.8rem;text-align:right">{td_label}</div>
-    </div>"""
-
-
-def price_histogram_html(orders: list[dict]) -> None:
-    """Render a simple ASCII-style bar chart using st.bar_chart."""
-    prices = [o["price"] for o in orders]
-    if not prices:
-        return
-    mn, mx = min(prices), max(prices)
-    if mn == mx:
-        st.bar_chart(pd.DataFrame({"价格": [mn], "数量": [len(prices)]}).set_index("价格"))
-        return
-    bins = np.linspace(mn, mx, 16)
-    counts, edges = np.histogram(prices, bins=bins)
-    labels = [f"¥{e:.0f}" for e in edges[:-1]]
-    df = pd.DataFrame({"分布": counts}, index=labels)
-    st.bar_chart(df, color="#cf6a32", height=180)
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ─────────────────────────────────────────────────────────────────────────────
 #  SESSION STATE
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ─────────────────────────────────────────────────────────────────────────────
 def _init():
-    defaults = {
-        "goods_id": 38211,
-        "goods_info": None,
-        "orders_data": None,
-        "search_results": [],
-        "last_fetched": None,
-        "connected": False,
-        "page_num": 1,
-        "sort_by": "default",
-    }
-    for k, v in defaults.items():
+    for k, v in {
+        "hash_name": "", "overview": None, "listings": None,
+        "scores": None, "search_results": [],
+        "chat_history": [], "last_fetched": None, "connected": False,
+    }.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
+def _fetch(hash_name: str):
+    with st.spinner("获取价格概览..."):
+        ov = fetch_price_overview(hash_name)
+    if not ov.get("ok"):
+        st.error(f"Steam API 错误：{ov.get('error')}"); return
+    with st.spinner("拉取挂单数据..."):
+        ls = fetch_listings(hash_name, count=100)
 
-def _fetch(goods_id: int, page_num: int, sort_by: str):
-    with st.spinner("正在连接 BUFF 服务器..."):
-        info = fetch_buff_goods_info(goods_id)
-    if not info.get("ok"):
-        st.session_state.connected = False
-        return False, info.get("error")
-    with st.spinner("拉取卖单数据..."):
-        orders = fetch_buff_sell_orders(goods_id, page_num=page_num, sort_by=sort_by)
-    if not orders.get("ok"):
-        st.session_state.connected = False
-        return False, orders.get("error")
-    st.session_state.update(
-        goods_id=goods_id, goods_info=info, orders_data=orders,
-        page_num=page_num, sort_by=sort_by,
-        last_fetched=datetime.now().strftime("%H:%M:%S"), connected=True,
+    listing_prices = [l["price"] for l in ls.get("listings", [])]
+    sc = compute(
+        lowest_price   = ov.get("lowest_price"),
+        median_price   = ov.get("median_price"),
+        volume         = ov.get("volume"),
+        total_listings = ls.get("total"),
+        listing_prices = listing_prices,
     )
-    return True, None
+    st.session_state.update(
+        hash_name=hash_name, overview=ov, listings=ls, scores=sc,
+        chat_history=[], last_fetched=datetime.now().strftime("%H:%M:%S"),
+        connected=True,
+    )
+    st.rerun()
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  UI HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+def score_color(s: int) -> str:
+    if s >= 75: return "#5cb85c"
+    if s >= 55: return "#f0ad4e"
+    return "#d9534f"
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  SIDEBAR
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-def render_sidebar():
-    with st.sidebar:
-
-        # ── logo ──────────────────────────────────────────────────────────
-        st.markdown("""
+def overall_card(sc: SkinScore):
+    c = sc.overall_color
+    st.markdown(f"""
+    <div style="text-align:center;padding:1.5rem 0 1rem">
         <div style="
-            padding:1.4rem 1rem 1rem;
-            border-bottom:1px solid #1a2d42;
-            margin-bottom:0.25rem">
-            <div style="
-                font-family:'Rajdhani',sans-serif;font-weight:700;
-                font-size:1.35rem;letter-spacing:0.04em;color:#e8eef2">
-                ⚔&nbsp; SKIN<span style="color:#cf6a32">SENSE</span>
+            width:130px;height:130px;border-radius:50%;
+            border:4px solid {c};background:{c}15;
+            display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+            margin:0 auto;box-shadow:0 0 32px {c}25">
+            <div style="font-size:2.4rem;font-weight:800;color:{c};line-height:1">
+                {sc.overall}</div>
+            <div style="font-size:.65rem;color:#555;letter-spacing:.12em;
+                        text-transform:uppercase;margin-top:2px">SCORE</div>
+        </div>
+        <div style="margin-top:.9rem;font-size:.95rem;font-weight:700;color:{c}">
+            {sc.overall_label}</div>
+        <div style="font-size:.72rem;color:#444;margin-top:3px">Overall Rating</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def sub_score_bar(label: str, en: str, score: int, note: str):
+    c = score_color(score)
+    st.markdown(f"""
+    <div style="margin-bottom:1.1rem">
+        <div style="display:flex;justify-content:space-between;
+                    align-items:baseline;margin-bottom:4px">
+            <div>
+                <span style="font-size:.82rem;font-weight:600;color:#ccc">{label}</span>
+                <span style="font-size:.68rem;color:#444;margin-left:5px">{en}</span>
             </div>
-            <div style="
-                font-family:'Inter',sans-serif;font-size:0.65rem;
-                letter-spacing:0.15em;text-transform:uppercase;
-                color:#4a6580;margin-top:2px">
-                BUFF · Market Intelligence
+            <span style="font-size:.95rem;font-weight:700;color:{c}">{score}</span>
+        </div>
+        <div style="background:#1a1a1a;border-radius:3px;height:5px;margin-bottom:4px">
+            <div style="background:{c};width:{score}%;height:5px;
+                        border-radius:3px;transition:width .4s ease"></div>
+        </div>
+        <div style="font-size:.72rem;color:#555;line-height:1.4">{note}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def score_panel(sc: SkinScore):
+    overall_card(sc)
+    st.markdown("<div style='height:.25rem'></div>", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="font-size:.68rem;font-weight:600;color:#333;'
+        'letter-spacing:.1em;text-transform:uppercase;'
+        'padding-bottom:.5rem;border-bottom:1px solid #1a1a1a;margin-bottom:.9rem">'
+        'Sub Scores</div>', unsafe_allow_html=True)
+    sub_score_bar("价值",  "Value",     sc.value,     sc.value_note)
+    sub_score_bar("流动性","Liquidity", sc.liquidity, sc.liquidity_note)
+    sub_score_bar("稳定性","Stability", sc.stability, sc.stability_note)
+    sub_score_bar("趋势",  "Trend",     sc.trend,     sc.trend_note)
+
+def item_header(hash_name: str, ov: dict, sc: SkinScore):
+    lp  = ov.get("lowest_price")
+    mp  = ov.get("median_price")
+    vol = ov.get("volume")
+    parts = hash_name.split("|")
+    weapon = parts[0].strip() if parts else ""
+    skin   = parts[1].strip() if len(parts) > 1 else hash_name
+    c = sc.overall_color
+
+    st.markdown(f"""
+    <div style="background:#141414;border:1px solid #1e1e1e;border-radius:10px;
+                padding:1.1rem 1.4rem;margin-bottom:1.25rem;
+                display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+        <div>
+            <div style="font-size:1.3rem;font-weight:800;color:#f0f0f0;line-height:1.2">
+                {skin}</div>
+            <div style="font-size:.78rem;color:#444;margin-top:3px">{weapon}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+            <div style="text-align:right">
+                <div style="font-size:.68rem;color:#444;margin-bottom:1px">最低在售价</div>
+                <div style="font-size:1.8rem;font-weight:800;color:#e05a00;line-height:1">
+                    {"¥" + f"{lp:.2f}" if lp else "—"}</div>
+            </div>
+            <div style="text-align:right">
+                <div style="font-size:.68rem;color:#444;margin-bottom:1px">均价</div>
+                <div style="font-size:1.1rem;font-weight:600;color:#aaa">
+                    {"¥" + f"{mp:.2f}" if mp else "—"}</div>
+            </div>
+            <div style="text-align:right">
+                <div style="font-size:.68rem;color:#444;margin-bottom:1px">24h 成交量</div>
+                <div style="font-size:1.1rem;font-weight:600;color:#aaa">
+                    {f"{vol:,}" if vol else "—"}</div>
+            </div>
+            <div style="background:{c}15;border:1px solid {c}40;border-radius:6px;
+                        padding:.35rem .75rem;text-align:center">
+                <div style="font-size:.65rem;color:#555;margin-bottom:1px">RATING</div>
+                <div style="font-size:1rem;font-weight:800;color:{c}">{sc.overall}</div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
 
-        # ── connection status ──────────────────────────────────────────────
-        live_badge(st.session_state.connected, st.session_state.last_fetched)
-        st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
+def section_hdr(text: str, sub: str = ""):
+    s = f'<span style="color:#444;font-size:.78rem;margin-left:.5rem">{sub}</span>' if sub else ""
+    st.markdown(
+        f'<div style="font-size:.85rem;font-weight:600;color:#ccc;'
+        f'padding:.5rem 0 .75rem;border-bottom:1px solid #1a1a1a;margin-bottom:.9rem">'
+        f'{text}{s}</div>', unsafe_allow_html=True)
 
-        # ── search ────────────────────────────────────────────────────────
-        sidebar_label("🔍  Search Item")
-        keyword = st.text_input("keyword", placeholder="AK-47 Redline ...",
-                                label_visibility="collapsed", key="kw")
-        if st.button("SEARCH", use_container_width=True):
-            if keyword:
-                with st.spinner("搜索中..."):
-                    res = fetch_buff_search(keyword)
-                st.session_state.search_results = res.get("items", []) if res["ok"] else []
+def stat_grid(items: list[tuple[str,str]]):
+    cols = st.columns(len(items))
+    for col, (label, val) in zip(cols, items):
+        with col:
+            st.markdown(f"""
+            <div style="background:#141414;border:1px solid #1e1e1e;border-radius:8px;
+                        padding:.7rem .9rem;text-align:center">
+                <div style="font-size:.68rem;color:#444;margin-bottom:3px">{label}</div>
+                <div style="font-size:1rem;font-weight:700;color:#ddd">{val}</div>
+            </div>""", unsafe_allow_html=True)
+
+def empty_state(msg="在左侧搜索饰品并点击「分析」开始"):
+    st.markdown(f"""
+    <div style="text-align:center;padding:5rem 0;
+                border:1px dashed #1a1a1a;border-radius:10px;margin:1rem 0">
+        <div style="font-size:2.5rem;margin-bottom:.75rem">🔫</div>
+        <div style="font-size:.9rem;color:#333">{msg}</div>
+    </div>""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  SIDEBAR
+# ─────────────────────────────────────────────────────────────────────────────
+def render_sidebar():
+    with st.sidebar:
+        dot_c = "#5cb85c" if st.session_state.connected else "#333"
+        ts    = st.session_state.last_fetched or "未连接"
+        st.markdown(f"""
+        <div style="padding:1.25rem .75rem 1rem;border-bottom:1px solid #1a1a1a">
+            <div style="font-size:1.2rem;font-weight:800;color:#f0f0f0;letter-spacing:-.01em">
+                🔫 SkinSense <span style="color:#e05a00">AI</span>
+            </div>
+            <div style="font-size:.68rem;color:#333;margin-top:3px;letter-spacing:.05em">
+                CS2 Skin Intelligence Agent
+            </div>
+            <div style="margin-top:.6rem;display:flex;align-items:center;gap:5px;
+                        font-size:.72rem;color:{dot_c}">
+                <span style="width:6px;height:6px;border-radius:50%;
+                             background:{dot_c};display:inline-block"></span>
+                {ts}
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
+
+        # search
+        st.markdown('<div style="font-size:.72rem;color:#444;margin-bottom:.3rem;font-weight:500">搜索饰品</div>', unsafe_allow_html=True)
+        kw = st.text_input("kw", placeholder="AK-47 Redline ...", label_visibility="collapsed")
+        if st.button("🔍 搜索"):
+            if kw:
+                with st.spinner(""):
+                    res = search_items(kw, count=12)
+                st.session_state.search_results = res.get("items", [])
                 if not st.session_state.search_results:
-                    st.warning("未找到结果，请检查 BUFF_COOKIE")
+                    st.warning("未找到结果")
 
         if st.session_state.search_results:
-            opts = st.session_state.search_results[:10]
-            choice = st.selectbox(
-                "选择结果",
-                range(len(opts)),
-                format_func=lambda i: (opts[i]["name_zh"] or opts[i]["name"] or "—"),
+            opts = st.session_state.search_results
+            idx  = st.selectbox(
+                "sel", range(len(opts)),
+                format_func=lambda i: f"{opts[i]['name']}  ¥{opts[i]['sell_price'] or '—'}",
                 label_visibility="collapsed",
             )
-            if st.button("LOAD  →", use_container_width=True, type="primary"):
-                st.session_state.goods_id = opts[choice]["goods_id"]
-                st.session_state.search_results = []
-                st.rerun()
+            if st.button("分析该饰品"):
+                _fetch(opts[idx]["hash_name"])
 
-        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("<div style='height:.25rem'></div>", unsafe_allow_html=True)
+        st.divider()
 
-        # ── goods id & controls ───────────────────────────────────────────
-        sidebar_label("⚙  Query Config")
-        goods_id = st.number_input(
-            "Goods ID", value=st.session_state.goods_id,
-            step=1, label_visibility="visible",
-        )
+        # manual
+        st.markdown('<div style="font-size:.72rem;color:#444;margin-bottom:.3rem;font-weight:500">直接输入 Hash Name</div>', unsafe_allow_html=True)
+        manual = st.text_input("manual", placeholder="AWP | Dragon Lore (Field-Tested)",
+                               label_visibility="collapsed")
+        if st.button("⚡ 开始分析"):
+            if manual.strip():
+                _fetch(manual.strip())
+            else:
+                st.warning("请输入 hash name")
 
-        sort_map = {
-            "综合排序":     "default",
-            "价格 ↑":      "price.asc",
-            "价格 ↓":      "price.desc",
-            "磨损 ↑":      "paintwear.asc",
-            "磨损 ↓":      "paintwear.desc",
-        }
-        sort_label = st.selectbox("排序方式", list(sort_map.keys()), label_visibility="visible")
+        st.divider()
 
-        col_pg, col_sz = st.columns(2)
-        with col_pg:
-            page_num = st.number_input("页码", value=st.session_state.page_num,
-                                       min_value=1, step=1)
+        # quick
+        st.markdown('<div style="font-size:.72rem;color:#444;margin-bottom:.4rem;font-weight:500">快速分析</div>', unsafe_allow_html=True)
+        for label, hn in QUICK:
+            if st.button(label, key=hn):
+                _fetch(hn)
 
-        st.markdown("<div style='height:0.25rem'></div>", unsafe_allow_html=True)
-        if st.button("⚡  FETCH DATA", use_container_width=True, type="primary"):
-            ok, err = _fetch(int(goods_id), int(page_num), sort_map[sort_label])
-            if not ok:
-                st.error(f"请求失败：{err}")
-                st.caption("请检查 backend/.env 中的 BUFF_COOKIE")
+# ─────────────────────────────────────────────────────────────────────────────
+#  TABS
+# ─────────────────────────────────────────────────────────────────────────────
+def tab_market(ov: dict, ls: dict, sc: SkinScore):
+    lp  = ov.get("lowest_price")
+    mp  = ov.get("median_price")
+    vol = ov.get("volume")
+    tot = ls.get("total", 0)
+    prices = [l["price"] for l in ls.get("listings", [])]
 
-        st.markdown("<hr>", unsafe_allow_html=True)
+    spread = round(lp - (mp * 0.87), 2) if lp and mp else None  # ~13% Steam fee proxy
 
-        # ── quick ids ─────────────────────────────────────────────────────
-        sidebar_label("⭐  Quick Access")
-        QUICK = [
-            ("AWP | 龙狙 FT",    38211),
-            ("AK-47 | 红线 FT",  3004),
-            ("蝴蝶刀 | 渐变",    42944),
-        ]
-        for label, gid in QUICK:
-            if st.button(label, use_container_width=True, key=f"q{gid}"):
-                ok, err = _fetch(gid, 1, "default")
-                if not ok:
-                    st.error(err)
+    stat_grid([
+        ("最低在售价",  f"¥{lp:.2f}" if lp else "—"),
+        ("中位在售价",  f"¥{mp:.2f}" if mp else "—"),
+        ("24h 成交量",  f"{vol:,}"   if vol else "—"),
+        ("总挂单量",    f"{tot:,}"   if tot else "—"),
+        ("价格标准差",  f"¥{sc.price_std:.2f}" if sc.price_std else "—"),
+    ])
 
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  MAIN TABS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    col_a, col_b = st.columns([3, 2])
+    with col_a:
+        section_hdr("价格分布", f"基于 {len(prices)} 条挂单")
+        if prices:
+            mn, mx = min(prices), max(prices)
+            if mn < mx:
+                edges  = np.linspace(mn, mx, 20)
+                counts, bins = np.histogram(prices, bins=edges)
+                df = pd.DataFrame({"数量": counts},
+                                   index=[f"¥{b:.0f}" for b in bins[:-1]])
+                st.bar_chart(df, color="#e05a00", height=200)
+            else:
+                st.caption("所有挂单价格相同")
+        else:
+            st.caption("暂无挂单数据")
 
-def tab_market(info: dict, odata: dict):
-    orders = odata["orders"]
-    prices = [o["price"] for o in orders]
-
-    # item card
-    st.markdown(item_card_html(
-        name_zh=info.get("name_zh") or "—",
-        name_en=info.get("name") or "",
-        sell_min=info.get("sell_min_price"),
-        buy_max=info.get("buy_max_price"),
-        sell_num=info.get("sell_num"),
-    ), unsafe_allow_html=True)
-
-    # metrics
-    panel_header("价格指标", f"本页 {len(orders)} 条 · 共 {odata['total']:,} 挂单")
-    c1, c2, c3, c4, c5 = st.columns(5)
-    lowest = odata.get("lowest_price")
-    median = odata.get("median_price")
-    buy_max = info.get("buy_max_price")
-    spread = round(lowest - buy_max, 2) if lowest and buy_max else None
-    p_arr = np.array(prices) if prices else np.array([0.0])
-
-    with c1: st.metric("本页最低卖价",  f"¥{lowest:.2f}"  if lowest  else "—")
-    with c2: st.metric("本页中位价",    f"¥{median:.2f}"  if median  else "—")
-    with c3: st.metric("最高求购价",    f"¥{buy_max:.2f}" if buy_max else "—")
-    with c4: st.metric("买卖价差",      f"¥{spread:.2f}"  if spread  else "—")
-    with c5: st.metric("标准差",        f"¥{np.std(p_arr):.2f}" if len(prices) > 1 else "—")
-
-    st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
-
-    # charts
-    col_hist, col_info = st.columns([3, 2])
-    with col_hist:
-        panel_header("价格分布", "Price Distribution")
-        price_histogram_html(orders)
-
-    with col_info:
-        panel_header("磨损分布", "Wear Breakdown")
-        wear_vals = [o["paintwear"] for o in orders if o["paintwear"] is not None]
-        if wear_vals:
-            counts = {}
-            for w in wear_vals:
-                _, zh, _ = wear_info(w)
-                counts[zh] = counts.get(zh, 0) + 1
-            for label, cnt in sorted(counts.items(), key=lambda x: -x[1]):
-                pct = cnt / len(wear_vals) * 100
-                _, _, color = next(
-                    (v for k, v in WEAR_LABEL.items() if v[1] == label), ("", "", "#7ea0b7")
-                )
+    with col_b:
+        section_hdr("价格区间")
+        if prices:
+            p_arr = np.array(prices)
+            for pct, label, color in [
+                (10, "低价区 P10", "#5cb85c"),
+                (25, "P25",       "#7ec87e"),
+                (50, "中位 P50",  "#f0ad4e"),
+                (75, "P75",       "#e07b39"),
+                (90, "高价区 P90","#d9534f"),
+            ]:
+                val = np.percentile(p_arr, pct)
                 st.markdown(f"""
-                <div style="display:flex;justify-content:space-between;align-items:center;
-                            padding:0.35rem 0;border-bottom:1px solid #1a2d42">
-                    <span style="color:#c6d4df;font-size:0.82rem">{label}</span>
-                    <span style="color:{color};font-family:'Rajdhani',sans-serif;
-                                 font-weight:700;font-size:0.9rem">{cnt}&nbsp;
-                        <span style="color:#4a6580;font-size:0.7rem">({pct:.0f}%)</span>
-                    </span>
+                <div style="display:flex;justify-content:space-between;
+                            padding:.35rem 0;border-bottom:1px solid #141414">
+                    <span style="font-size:.8rem;color:#555">{label}</span>
+                    <span style="font-size:.9rem;font-weight:600;color:{color}">
+                        ¥ {val:.2f}</span>
                 </div>""", unsafe_allow_html=True)
         else:
-            st.markdown('<div style="color:#4a6580;font-size:0.82rem;padding:0.5rem 0">无磨损数据</div>',
-                        unsafe_allow_html=True)
+            st.caption("暂无数据")
 
 
-def tab_orders(odata: dict):
-    orders = odata["orders"]
-    if not orders:
-        st.markdown("""
-        <div style="text-align:center;padding:3rem 0;color:#2a3d52">
-            <div style="font-size:2rem;margin-bottom:0.5rem">📭</div>
-            <div>该页暂无卖单</div>
-        </div>""", unsafe_allow_html=True)
+def tab_listings(ls: dict):
+    listings = ls.get("listings", [])
+    if not listings:
+        st.markdown('<div style="color:#333;font-size:.85rem;padding:2rem 0;'
+                    'text-align:center">暂无挂单数据</div>', unsafe_allow_html=True)
         return
 
-    prices = [o["price"] for o in orders]
-    panel_header("筛选器", "Order Filters")
-
-    c1, c2, c3 = st.columns([3, 1, 1])
-    with c1:
-        mn, mx = float(min(prices)), float(max(prices))
-        price_range = st.slider("价格区间", mn, mx, (mn, mx), step=0.01,
-                                format="¥%.2f", label_visibility="collapsed") if mn < mx else (mn, mx)
-    with c2:
-        only_stickers = st.checkbox("含贴纸")
-    with c3:
-        only_tradable = st.checkbox("仅可交易")
-
-    filtered = [
-        o for o in orders
-        if price_range[0] <= o["price"] <= price_range[1]
-        and (not only_stickers or o["stickers"])
-        and (not only_tradable or not o.get("tradable_cooldown_text") or o["tradable_cooldown_text"] == "可交易")
-    ]
-
-    st.markdown(f'<div style="color:#4a6580;font-size:0.72rem;margin-bottom:0.5rem">'
-                f'显示 {len(filtered)} / {len(orders)} 条</div>', unsafe_allow_html=True)
+    section_hdr("在售挂单", f"共 {ls.get('total',0):,} 条 · 显示最低价前 {len(listings)} 条")
 
     # table header
     st.markdown("""
-    <div style="
-        display:grid;grid-template-columns:2.5rem 6rem 7rem 5rem 1fr 4rem;
-        gap:0;padding:0.4rem 0.9rem;
-        background:#0d1520;border:1px solid #1a2d42;
-        border-radius:4px 4px 0 0;
-        font-family:'Rajdhani',sans-serif;font-size:0.68rem;
-        font-weight:700;letter-spacing:0.1em;
-        text-transform:uppercase;color:#4a6580">
-        <div>#</div><div>价格</div><div>磨损</div>
-        <div>图案</div><div>贴纸</div><div style="text-align:right">状态</div>
+    <div style="display:grid;grid-template-columns:3rem 1fr 6rem;
+                gap:0;padding:.4rem .9rem;background:#141414;
+                border:1px solid #1e1e1e;border-radius:6px 6px 0 0;
+                font-size:.7rem;color:#444;font-weight:600;letter-spacing:.05em">
+        <div>#</div><div>Listing ID</div>
+        <div style="text-align:right">价格</div>
     </div>""", unsafe_allow_html=True)
 
-    # table rows
-    rows_html = "".join(
-        order_row_html(i, o["price"], o["paintwear"], o["paintseed"],
-                       o["stickers"], o.get("tradable_cooldown_text"))
-        for i, o in enumerate(filtered)
-    )
+    rows = ""
+    for i, l in enumerate(listings[:50]):
+        bg = "#111" if i % 2 == 0 else "#131313"
+        rows += f"""
+        <div style="display:grid;grid-template-columns:3rem 1fr 6rem;
+                    gap:0;padding:.5rem .9rem;background:{bg};
+                    border-left:1px solid #1e1e1e;border-right:1px solid #1e1e1e;
+                    border-bottom:1px solid #161616;align-items:center">
+            <div style="color:#333;font-size:.7rem">{i+1:02d}</div>
+            <div style="font-size:.72rem;color:#444;font-family:monospace">
+                {l['listing_id'][:16]}…</div>
+            <div style="text-align:right;font-size:.95rem;font-weight:700;color:#e05a00">
+                ¥ {l['price']:.2f}</div>
+        </div>"""
+
     st.markdown(
-        f'<div style="border:1px solid #1a2d42;border-top:none;border-radius:0 0 4px 4px;'
-        f'max-height:480px;overflow-y:auto">{rows_html}</div>',
+        f'<div style="border-radius:0 0 6px 6px;overflow:hidden;'
+        f'max-height:420px;overflow-y:auto">{rows}</div>',
         unsafe_allow_html=True,
     )
 
 
-def tab_analysis(info: dict, odata: dict):
-    orders = odata["orders"]
-    prices = np.array([o["price"] for o in orders]) if orders else np.array([0.0])
-    buy_max = info.get("buy_max_price") or 0
-    sell_min = info.get("sell_min_price") or (float(prices.min()) if len(prices) else 0)
+def tab_agent(hash_name: str, sc: SkinScore):
+    # preset prompts
+    section_hdr("AI 饰品分析师", "基于评分数据实时回答")
 
-    col_l, col_r = st.columns([1, 2])
+    st.markdown("""
+    <div style="background:#141414;border:1px solid #1e1e1e;border-radius:8px;
+                padding:.75rem 1rem;margin-bottom:1rem;
+                display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
+        <span style="font-size:.72rem;color:#444;font-weight:500">快速提问：</span>
+    </div>""", unsafe_allow_html=True)
 
-    with col_l:
-        panel_header("价格统计", "Price Percentiles")
-        for pct, label in [(10, "P10  低价区"), (25, "P25"), (50, "P50  中位"),
-                           (75, "P75"), (90, "P90  高价区")]:
-            val = np.percentile(prices, pct)
-            st.markdown(f"""
-            <div style="display:flex;justify-content:space-between;align-items:center;
-                        padding:0.38rem 0;border-bottom:1px solid #1a2d42">
-                <span style="color:#4a6580;font-family:'Rajdhani',sans-serif;
-                             font-size:0.72rem;font-weight:700;letter-spacing:0.06em;
-                             text-transform:uppercase">{label}</span>
-                <span style="color:#cf6a32;font-family:'Rajdhani',sans-serif;
-                             font-weight:700;font-size:1rem">¥{val:.2f}</span>
-            </div>""", unsafe_allow_html=True)
+    presets = ["这个饰品值得买吗？", "为什么分数低？", "适合长期持有吗？",
+               "好不好出手？", "综合帮我分析一下"]
+    cols = st.columns(len(presets))
+    for col, q in zip(cols, presets):
+        with col:
+            if st.button(q, key=f"preset_{q}"):
+                _chat(q, hash_name, sc)
 
-    with col_r:
-        panel_header("市场洞察", "Market Signals")
+    st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
 
-        spread = sell_min - buy_max
-        spread_pct = (spread / buy_max * 100) if buy_max else 0
-        cv = float(prices.std() / prices.mean()) if prices.mean() else 0
-        sticker_orders = [o for o in orders if o["stickers"]]
-        wear_orders    = [o for o in orders if o["paintwear"] is not None]
+    # chat history
+    for role, msg in st.session_state.chat_history:
+        with st.chat_message(role):
+            st.markdown(msg)
 
-        signals = []
-        if spread_pct < 5:
-            signals.append(("🟢", "流动性优秀", f"买卖价差仅 {spread_pct:.1f}%，套利空间极小", "#5ba642"))
-        elif spread_pct < 12:
-            signals.append(("🟡", "流动性正常", f"买卖价差 {spread_pct:.1f}%，市场活跃", "#c6b441"))
-        else:
-            signals.append(("🔴", "流动性偏低", f"买卖价差 {spread_pct:.1f}%，持仓成本较高", "#c23b22"))
+    # input
+    user_input = st.chat_input("问我任何关于这个饰品的问题…")
+    if user_input:
+        _chat(user_input, hash_name, sc)
 
-        if cv < 0.03:
-            signals.append(("📊", "价格高度集中", f"变异系数 {cv:.3f}，卖家定价一致", "#4db6d4"))
-        elif cv < 0.08:
-            signals.append(("📊", "价格分布适中", f"变异系数 {cv:.3f}，存在一定议价空间", "#a87fef"))
-        else:
-            signals.append(("📊", "价格分布宽泛", f"变异系数 {cv:.3f}，注意特殊品溢价（贴纸/磨损）", "#cf6a32"))
+def _chat(question: str, hash_name: str, sc: SkinScore):
+    st.session_state.chat_history.append(("user", question))
+    reply = agent_reply(question, hash_name, sc)
+    st.session_state.chat_history.append(("assistant", reply))
+    st.rerun()
 
-        if sticker_orders:
-            pct = len(sticker_orders) / len(orders) * 100
-            signals.append(("🏷️", "贴纸溢价存在", f"{pct:.0f}% 卖单含贴纸，注意辨别溢价", "#d32ce6"))
-
-        if wear_orders:
-            avg_wear = np.mean([o["paintwear"] for o in wear_orders])
-            short, zh, color = wear_info(avg_wear)
-            signals.append(("🔍", f"平均磨损：{zh}", f"均值 {avg_wear:.4f} ({short})", color))
-
-        for icon, title, desc, color in signals:
-            st.markdown(f"""
-            <div style="
-                background:#0d1520;border:1px solid #1a2d42;
-                border-left:3px solid {color};border-radius:3px;
-                padding:0.7rem 1rem;margin-bottom:0.5rem">
-                <div style="font-family:'Rajdhani',sans-serif;font-weight:700;
-                            font-size:0.85rem;color:#c6d4df;margin-bottom:2px">
-                    {icon}&nbsp; {title}</div>
-                <div style="font-size:0.78rem;color:#4a6580">{desc}</div>
-            </div>""", unsafe_allow_html=True)
-
-        # sticker freq
-        if sticker_orders:
-            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-            panel_header("贴纸频次", "Top Stickers")
-            from collections import Counter
-            top = Counter(s for o in sticker_orders for s in o["stickers"]).most_common(6)
-            max_cnt = top[0][1] if top else 1
-            for name, cnt in top:
-                bar_w = int(cnt / max_cnt * 100)
-                st.markdown(f"""
-                <div style="margin-bottom:0.4rem">
-                    <div style="display:flex;justify-content:space-between;
-                                font-size:0.75rem;color:#7ea0b7;margin-bottom:2px">
-                        <span>{name}</span><span style="color:#a87fef">{cnt}</span>
-                    </div>
-                    <div style="background:#1a2d42;border-radius:2px;height:4px">
-                        <div style="background:#8847ff;width:{bar_w}%;height:4px;border-radius:2px"></div>
-                    </div>
-                </div>""", unsafe_allow_html=True)
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ─────────────────────────────────────────────────────────────────────────────
 #  MAIN
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ─────────────────────────────────────────────────────────────────────────────
 def main():
-    st.markdown(CSS, unsafe_allow_html=True)
     _init()
     render_sidebar()
 
-    # ── top bar ───────────────────────────────────────────────────────────
+    # top bar
     st.markdown("""
-    <div style="
-        display:flex;align-items:center;justify-content:space-between;
-        padding:0.9rem 0 0.75rem;border-bottom:1px solid #1a2d42;
-        margin-bottom:1.25rem">
-        <div style="display:flex;align-items:center;gap:0.75rem">
-            <span style="
-                font-family:'Rajdhani',sans-serif;font-size:0.72rem;
-                font-weight:700;letter-spacing:0.15em;text-transform:uppercase;
-                color:#4a6580">SKINSENSE</span>
-            <span style="color:#1a2d42">|</span>
-            <span style="
-                font-family:'Rajdhani',sans-serif;font-size:0.72rem;
-                letter-spacing:0.1em;text-transform:uppercase;
-                color:#cf6a32">BUFF · SELL ORDER ANALYSIS</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:.9rem 0 .75rem;border-bottom:1px solid #1a1a1a;margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-size:.75rem;font-weight:600;color:#333;letter-spacing:.05em">
+                SKINSENSE AI</span>
+            <span style="color:#1e1e1e">/</span>
+            <span style="font-size:.75rem;color:#444">CS2 · Skin Intelligence</span>
         </div>
-        <div style="
-            font-family:'Inter',sans-serif;font-size:0.65rem;
-            letter-spacing:0.08em;color:#2a3d52">
-            CS2 · COUNTER-STRIKE 2
-        </div>
+        <span style="font-size:.68rem;color:#222">
+            Data: Steam Community Market · No login required</span>
     </div>""", unsafe_allow_html=True)
 
-    # ── no data state ─────────────────────────────────────────────────────
-    if not st.session_state.goods_info:
-        st.markdown("""
-        <div style="
-            text-align:center;padding:5rem 0;
-            border:1px dashed #1a2d42;border-radius:4px;
-            margin-top:1rem">
-            <div style="font-size:2.5rem;margin-bottom:1rem">🎮</div>
-            <div style="
-                font-family:'Rajdhani',sans-serif;font-weight:700;
-                font-size:1.1rem;letter-spacing:0.08em;text-transform:uppercase;
-                color:#2a3d52;margin-bottom:0.5rem">NO ITEM SELECTED</div>
-            <div style="color:#2a3d52;font-size:0.82rem">
-                在左侧面板输入 Goods ID 并点击 FETCH DATA
-            </div>
-        </div>""", unsafe_allow_html=True)
+    if not st.session_state.scores:
+        empty_state()
         return
 
-    info   = st.session_state.goods_info
-    odata  = st.session_state.orders_data
+    ov = st.session_state.overview
+    ls = st.session_state.listings
+    sc = st.session_state.scores
+    hn = st.session_state.hash_name
 
-    if not odata or not odata.get("orders"):
-        st.info("该页无卖单数据，请翻页或调整排序")
-        return
+    # item header
+    item_header(hn, ov, sc)
 
-    # ── tabs ──────────────────────────────────────────────────────────────
-    t1, t2, t3 = st.tabs(["📈  市场行情", "📋  卖单列表", "🔬  市场分析"])
-    with t1: tab_market(info, odata)
-    with t2: tab_orders(odata)
-    with t3: tab_analysis(info, odata)
+    # score panel + tabs
+    col_score, col_data = st.columns([1, 2], gap="large")
+
+    with col_score:
+        st.markdown(
+            '<div style="background:#111;border:1px solid #1e1e1e;'
+            'border-radius:10px;padding:1rem 1.25rem">',
+            unsafe_allow_html=True,
+        )
+        score_panel(sc)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with col_data:
+        t1, t2, t3 = st.tabs(["📈  市场数据", "📋  挂单列表", "🤖  AI 对话"])
+        with t1: tab_market(ov, ls, sc)
+        with t2: tab_listings(ls)
+        with t3: tab_agent(hn, sc)
 
 
 main()
