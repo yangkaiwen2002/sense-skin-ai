@@ -102,6 +102,10 @@ def fetch_listings(hash_name: str, start: int = 0, count: int = 100) -> dict:
         return {"ok": False, "error": "api_failure", "listings": []}
 
     raw = data.get("listinginfo", {})
+    # Steam sometimes returns [] instead of {} when no listings exist
+    if not isinstance(raw, dict):
+        raw = {}
+
     listings = []
     for lid, info in raw.items():
         # converted_price + converted_fee = buyer pays (in fen)
@@ -112,6 +116,25 @@ def fetch_listings(hash_name: str, start: int = 0, count: int = 100) -> dict:
     listings.sort(key=lambda x: x["price"])
     prices = [l["price"] for l in listings]
 
+    # Extract skin image URL from assets block
+    icon_url = None
+    assets = data.get("assets", {})
+    if isinstance(assets, dict):
+        for app_assets in assets.values():
+            if not isinstance(app_assets, dict):
+                continue
+            for ctx_assets in app_assets.values():
+                if not isinstance(ctx_assets, dict):
+                    continue
+                for asset in ctx_assets.values():
+                    if isinstance(asset, dict) and asset.get("icon_url"):
+                        icon_url = asset["icon_url"]
+                        break
+                if icon_url:
+                    break
+            if icon_url:
+                break
+
     return {
         "ok":           True,
         "hash_name":    hash_name,
@@ -119,6 +142,7 @@ def fetch_listings(hash_name: str, start: int = 0, count: int = 100) -> dict:
         "listings":     listings,
         "lowest_price": prices[0]              if prices else None,
         "median_price": prices[len(prices)//2] if prices else None,
+        "icon_url":     icon_url,
     }
 
 
@@ -143,10 +167,12 @@ def search_items(query: str, count: int = 15) -> dict:
     items = []
     for r in data.get("results", []):
         price_fen = r.get("sell_price", 0)
+        icon_url = r.get("asset_description", {}).get("icon_url", "")
         items.append({
             "hash_name":     r.get("hash_name", ""),
             "name":          r.get("name", ""),
             "sell_listings": r.get("sell_listings", 0),
             "sell_price":    round(price_fen / 100, 2) if price_fen else None,
+            "icon_url":      icon_url,
         })
     return {"ok": True, "items": items}

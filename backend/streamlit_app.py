@@ -122,11 +122,18 @@ QUICK = [
 def _init():
     for k, v in {
         "hash_name": "", "overview": None, "listings": None,
-        "scores": None, "search_results": [],
+        "scores": None, "search_results": [], "icon_url": None,
         "chat_history": [], "last_fetched": None, "connected": False,
     }.items():
         if k not in st.session_state:
             st.session_state[k] = v
+
+STEAM_CDN = "https://community.akamai.steamstatic.com/economy/image"
+
+def _icon_src(icon_url: str | None) -> str | None:
+    if not icon_url:
+        return None
+    return f"{STEAM_CDN}/{icon_url}/256fx256f"
 
 def _fetch(hash_name: str):
     with st.spinner("获取价格概览..."):
@@ -146,6 +153,7 @@ def _fetch(hash_name: str):
     )
     st.session_state.update(
         hash_name=hash_name, overview=ov, listings=ls, scores=sc,
+        icon_url=ls.get("icon_url"),
         chat_history=[], last_fetched=datetime.now().strftime("%H:%M:%S"),
         connected=True,
     )
@@ -213,7 +221,7 @@ def score_panel(sc: SkinScore):
     sub_score_bar("稳定性","Stability", sc.stability, sc.stability_note)
     sub_score_bar("趋势",  "Trend",     sc.trend,     sc.trend_note)
 
-def item_header(hash_name: str, ov: dict, sc: SkinScore):
+def item_header(hash_name: str, ov: dict, sc: SkinScore, icon_url: str | None = None):
     lp  = ov.get("lowest_price")
     mp  = ov.get("median_price")
     vol = ov.get("volume")
@@ -221,12 +229,24 @@ def item_header(hash_name: str, ov: dict, sc: SkinScore):
     weapon = parts[0].strip() if parts else ""
     skin   = parts[1].strip() if len(parts) > 1 else hash_name
     c = sc.overall_color
+    img_src = _icon_src(icon_url)
+
+    img_html = (
+        f'<img src="{img_src}" style="width:96px;height:72px;object-fit:contain;'
+        f'filter:drop-shadow(0 0 12px {c}40)" />'
+        if img_src else
+        '<div style="width:96px;height:72px;background:#1a1a1a;border-radius:6px;'
+        'display:flex;align-items:center;justify-content:center;'
+        'font-size:2rem">🔫</div>'
+    )
 
     st.markdown(f"""
-    <div style="background:#141414;border:1px solid #1e1e1e;border-radius:10px;
+    <div style="background:linear-gradient(135deg,#161616 0%,#111 100%);
+                border:1px solid #1e1e1e;border-radius:10px;
                 padding:1.1rem 1.4rem;margin-bottom:1.25rem;
-                display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
-        <div>
+                display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
+        {img_html}
+        <div style="flex:1;min-width:140px">
             <div style="font-size:1.3rem;font-weight:800;color:#f0f0f0;line-height:1.2">
                 {skin}</div>
             <div style="font-size:.78rem;color:#444;margin-top:3px">{weapon}</div>
@@ -275,10 +295,16 @@ def stat_grid(items: list[tuple[str,str]]):
 
 def empty_state(msg="在左侧搜索饰品并点击「分析」开始"):
     st.markdown(f"""
-    <div style="text-align:center;padding:5rem 0;
+    <div style="text-align:center;padding:5rem 2rem;
                 border:1px dashed #1a1a1a;border-radius:10px;margin:1rem 0">
-        <div style="font-size:2.5rem;margin-bottom:.75rem">🔫</div>
-        <div style="font-size:.9rem;color:#333">{msg}</div>
+        <img src="https://community.akamai.steamstatic.com/economy/image/
+fWFc82js0fmoRAP-qOIPu5THSWqfSmTELLqcUywGkijVjZULUrsm1j-9xgEJDxNkVkWsD7
+kChfGqFPQGJl63-a0Mf1Rt-xoH-yME/256fx256f"
+             style="width:140px;height:105px;object-fit:contain;opacity:.25;
+                    filter:grayscale(1)" />
+        <div style="font-size:.9rem;color:#333;margin-top:1rem">{msg}</div>
+        <div style="font-size:.75rem;color:#222;margin-top:.4rem">
+            支持搜索 / 直接输入 Steam hash name</div>
     </div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -319,13 +345,26 @@ def render_sidebar():
 
         if st.session_state.search_results:
             opts = st.session_state.search_results
-            idx  = st.selectbox(
-                "sel", range(len(opts)),
-                format_func=lambda i: f"{opts[i]['name']}  ¥{opts[i]['sell_price'] or '—'}",
-                label_visibility="collapsed",
-            )
-            if st.button("分析该饰品"):
-                _fetch(opts[idx]["hash_name"])
+            for item in opts[:8]:
+                img = _icon_src(item.get("icon_url"))
+                price = f"¥{item['sell_price']:.2f}" if item.get("sell_price") else "—"
+                img_tag = (
+                    f'<img src="{img}" style="width:36px;height:27px;object-fit:contain" />'
+                    if img else '<div style="width:36px;height:27px"></div>'
+                )
+                st.markdown(f"""
+                <div style="display:flex;align-items:center;gap:.5rem;
+                            background:#141414;border:1px solid #1e1e1e;
+                            border-radius:6px;padding:.4rem .6rem;margin-bottom:.3rem">
+                    {img_tag}
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:.72rem;color:#ccc;white-space:nowrap;
+                                    overflow:hidden;text-overflow:ellipsis">{item['name']}</div>
+                        <div style="font-size:.68rem;color:#e05a00">{price}</div>
+                    </div>
+                </div>""", unsafe_allow_html=True)
+                if st.button("分析", key=f"sr_{item['hash_name']}"):
+                    _fetch(item["hash_name"])
 
         st.markdown("<div style='height:.25rem'></div>", unsafe_allow_html=True)
         st.divider()
@@ -512,13 +551,14 @@ def main():
         empty_state()
         return
 
-    ov = st.session_state.overview
-    ls = st.session_state.listings
-    sc = st.session_state.scores
-    hn = st.session_state.hash_name
+    ov  = st.session_state.overview
+    ls  = st.session_state.listings
+    sc  = st.session_state.scores
+    hn  = st.session_state.hash_name
+    ico = st.session_state.icon_url
 
     # item header
-    item_header(hn, ov, sc)
+    item_header(hn, ov, sc, icon_url=ico)
 
     # score panel + tabs
     col_score, col_data = st.columns([1, 2], gap="large")
