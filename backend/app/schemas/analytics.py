@@ -18,11 +18,13 @@ class PlatformAnalytics(BaseModel):
 class ItemOverview(BaseModel):
     item_id: int
     item_name: str
+    skin_name: str | None = None
     weapon_type: str | None = None
     rarity: str | None = None
     exterior: str | None = None
     stattrak: bool = False
     souvenir: bool = False
+    icon_url: str | None = None
     platforms: list[PlatformAnalytics] = []
 
 

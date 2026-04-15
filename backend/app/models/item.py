@@ -18,6 +18,7 @@ class Item(Base):
     stattrak: Mapped[bool] = mapped_column(Boolean, default=False)
     souvenir: Mapped[bool] = mapped_column(Boolean, default=False)
     category: Mapped[str | None] = mapped_column(String)
+    icon_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     price_snapshots: Mapped[list] = relationship("PriceSnapshot", back_populates="item")

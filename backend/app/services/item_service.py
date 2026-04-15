@@ -1,11 +1,16 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.models.item import Item
 
 
 def search_items(db: Session, q: str, limit: int = 20) -> list[Item]:
     return (
         db.query(Item)
-        .filter(Item.item_name.ilike(f"%{q}%"))
+        .filter(or_(
+            Item.item_name.ilike(f"%{q}%"),
+            Item.skin_name.ilike(f"%{q}%"),
+            Item.weapon_type.ilike(f"%{q}%"),
+        ))
         .limit(limit)
         .all()
     )

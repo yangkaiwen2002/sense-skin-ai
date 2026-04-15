@@ -13,6 +13,7 @@ async function request(path, options = {}) {
   }
 }
 
+export const getItems = (limit = 50) => request(`/items?limit=${limit}`)
 export const searchItems = (q) => request(`/items/search?q=${encodeURIComponent(q)}`)
 export const getItemOverview = (id) => request(`/items/${id}/overview`)
 export const getItemHistory = (id, days = 30, platform = '') =>

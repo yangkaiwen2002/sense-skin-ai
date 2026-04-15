@@ -9,7 +9,7 @@ import Watchlist from './pages/Watchlist'
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-950">
+      <div style={{ minHeight: '100vh', background: 'var(--bg-page)' }}>
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />

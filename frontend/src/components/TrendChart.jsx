@@ -7,10 +7,10 @@ import { formatCNY, formatDate } from '../utils/formatters'
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload || !payload.length) return null
   return (
-    <div className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 shadow-xl">
-      <p className="text-slate-400 text-xs mb-1">{label}</p>
+    <div style={{ background: '#1a2035', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+      <p style={{ color: 'var(--text-dim)', fontSize: 11, marginBottom: 4 }}>{label}</p>
       {payload.map(p => (
-        <p key={p.dataKey} className="text-sm font-semibold" style={{ color: p.color }}>
+        <p key={p.dataKey} style={{ fontSize: 13, fontWeight: 600, color: p.color }}>
           {p.name}: {formatCNY(p.value)}
         </p>
       ))}
@@ -21,8 +21,8 @@ function CustomTooltip({ active, payload, label }) {
 export default function TrendChart({ data = [], avg7d, avg30d }) {
   if (!data.length) {
     return (
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 flex items-center justify-center h-56">
-        <p className="text-slate-500 text-sm">暂无历史价格数据</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
+        <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>暂无历史价格数据</p>
       </div>
     )
   }
@@ -30,9 +30,8 @@ export default function TrendChart({ data = [], avg7d, avg30d }) {
   const formatted = data.map(d => ({ ...d, date: formatDate(d.date) }))
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-      <p className="text-slate-400 text-xs mb-3">价格走势（近30天）</p>
-      <ResponsiveContainer width="100%" height={240}>
+    <div>
+      <ResponsiveContainer width="100%" height={220}>
         <LineChart data={formatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis

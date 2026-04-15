@@ -69,11 +69,13 @@ def get_item_overview(db: Session, item_id: int) -> ItemOverview | None:
     return ItemOverview(
         item_id=item.id,
         item_name=item.item_name,
+        skin_name=item.skin_name,
         weapon_type=item.weapon_type,
         rarity=item.rarity,
         exterior=item.exterior,
         stattrak=item.stattrak,
         souvenir=item.souvenir,
+        icon_url=item.icon_url,
         platforms=platform_analytics,
     )
 

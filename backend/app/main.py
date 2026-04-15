@@ -6,7 +6,7 @@ from app.config import settings
 from app.database import engine, get_db, Base
 import app.models  # noqa: register all models
 
-from app.routers import items, analytics, compare, rental, reports, buff
+from app.routers import items, analytics, compare, rental, reports, buff, chat
 from app.services.price_fetcher import refresh_all_prices
 
 app = FastAPI(title="SkinSense AI", version="1.0.0")
@@ -31,6 +31,7 @@ app.include_router(compare.router, prefix="/api")
 app.include_router(rental.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(buff.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 
 @app.get("/")
