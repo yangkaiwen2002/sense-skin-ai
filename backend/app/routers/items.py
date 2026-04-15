@@ -11,7 +11,7 @@ from app.models.platform import Platform
 router = APIRouter(prefix="/items", tags=["items"])
 
 
-@router.get("", response_model=list[dict])
+@router.get("")
 def get_items(limit: int = 50, db: Session = Depends(get_db)):
     """Return all items with their latest best price."""
     items = list_items(db, limit=limit)

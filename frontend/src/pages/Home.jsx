@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SearchBar from '../components/SearchBar'
 import { getItems, seedDatabase, refreshPrices } from '../services/api'
+import AskSense from '../components/AskSense'
 import { formatCNY } from '../utils/formatters'
 import { computeScores } from '../components/ScorePanel'
 
@@ -404,6 +405,17 @@ export default function Home() {
             ))}
           </div>
         )}
+
+        {/* ── Ask Sense RAG ── */}
+        <div style={{ marginTop: 48, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <div style={{ width: 3, height: 18, background: 'linear-gradient(180deg, #4a8ef5, #8b5cf6)', borderRadius: 2 }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>Ask Sense</span>
+            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>知识库检索 · AI 问答</span>
+          </div>
+          <AskSense />
+        </div>
+
       </div>
     </div>
   )
