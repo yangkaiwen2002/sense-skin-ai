@@ -30,7 +30,7 @@ function SkinImage({ iconUrl, name, rarity }) {
   const c = RARITY_COLOR[rarity] || '#4a8ef5'
   const src = iconUrl.startsWith('http')
     ? iconUrl
-    : `https://community.cloudflare.steamstatic.com/economy/image/${iconUrl}`
+    : `https://community.fastly.steamstatic.com/economy/image/${iconUrl}/360fx360f`
   return (
     <div style={{
       width: '100%', height: '100%',

@@ -46,7 +46,7 @@ function SkinHeroImage({ weaponType, rarity, skinName, iconUrl }) {
 
       {iconUrl ? (
         <img
-          src={iconUrl.startsWith('http') ? iconUrl : `https://community.cloudflare.steamstatic.com/economy/image/${iconUrl}`}
+          src={iconUrl.startsWith('http') ? iconUrl : `https://community.fastly.steamstatic.com/economy/image/${iconUrl}/360fx360f`}
           alt={skinName}
           style={{
             maxWidth: '82%', maxHeight: 260, objectFit: 'contain',
