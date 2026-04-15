@@ -25,6 +25,30 @@ function scoreColor(s) {
   return '#ef4444'
 }
 
+function SkinImage({ iconUrl, name, rarity }) {
+  const c = RARITY_COLOR[rarity] || '#4a8ef5'
+  const src = iconUrl.startsWith('http')
+    ? iconUrl
+    : `https://community.cloudflare.steamstatic.com/economy/image/${iconUrl}`
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: `radial-gradient(ellipse at center, ${c}18 0%, transparent 70%)`,
+    }}>
+      <img
+        src={src}
+        alt={name}
+        style={{
+          maxWidth: '88%', maxHeight: 120, objectFit: 'contain',
+          filter: `drop-shadow(0 0 14px ${c}60)`,
+        }}
+        onError={e => { e.currentTarget.style.display = 'none' }}
+      />
+    </div>
+  )
+}
+
 function SkinPlaceholder({ weaponType, rarity, size = 120 }) {
   const abbr = WEAPON_ABBR[weaponType] || (weaponType?.[0] || '?')
   const c = RARITY_COLOR[rarity] || '#4a8ef5'
@@ -98,7 +122,11 @@ function HotItemCard({ item, onClick }) {
     >
       {/* Image zone */}
       <div style={{ position: 'relative', height: 140, overflow: 'hidden', background: '#080c14' }}>
-        <SkinPlaceholder weaponType={item.weapon_type} rarity={item.rarity} size={140} />
+        {item.icon_url ? (
+          <SkinImage iconUrl={item.icon_url} name={item.skin_name || item.item_name} rarity={item.rarity} />
+        ) : (
+          <SkinPlaceholder weaponType={item.weapon_type} rarity={item.rarity} size={140} />
+        )}
         <ScoreBadge score={scores?.overall} />
         {item.stattrak && (
           <div style={{
