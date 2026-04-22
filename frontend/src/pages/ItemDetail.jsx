@@ -4,7 +4,8 @@ import TrendChart from '../components/TrendChart'
 import AIChat from '../components/AIChat'
 import RiskBadge from '../components/RiskBadge'
 import { ScoreRing, CompactScoreBars, computeScores } from '../components/ScorePanel'
-import { getItemOverview, getItemHistory, getItemCompare, getItemEvents } from '../services/api'
+import { getItemOverview, getItemHistory, getItemCompare, getItemEvents, getItemDecision } from '../services/api'
+import DecisionPanel from '../components/DecisionPanel'
 import { formatCNY } from '../utils/formatters'
 import PlatformComparisonTable from '../components/PlatformComparisonTable'
 import EventTimeline from '../components/EventTimeline'
@@ -126,6 +127,8 @@ export default function ItemDetail() {
   const [history, setHistory] = useState([])
   const [compare, setCompare] = useState(null)
   const [events, setEvents] = useState([])
+  const [decision, setDecision] = useState(null)
+  const [decisionLoading, setDecisionLoading] = useState(true)
   const [platform, setPlatform] = useState('BUFF')
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(true)
@@ -136,17 +139,20 @@ export default function ItemDetail() {
 
   async function loadAll() {
     setLoading(true)
+    setDecisionLoading(true)
     setError(null)
     const [ov, cmp, ev] = await Promise.all([
       getItemOverview(id),
       getItemCompare(id),
       getItemEvents(id, 60),
     ])
-    if (!ov) { setError('饰品数据未找到'); setLoading(false); return }
+    if (!ov) { setError('饰品数据未找到'); setLoading(false); setDecisionLoading(false); return }
     setOverview(ov)
     setCompare(cmp)
     setEvents(Array.isArray(ev) ? ev : (ev?.events || []))
     setLoading(false)
+    // Run full decision pipeline separately so page renders first
+    getItemDecision(id).then(d => { setDecision(d); setDecisionLoading(false) })
   }
 
   async function loadHistory() {
@@ -424,8 +430,12 @@ export default function ItemDetail() {
             )}
           </div>
 
-          {/* ── RIGHT: AI chat ── */}
-          <div style={{ position: 'sticky', top: 16 }}>
+          {/* ── RIGHT: Decision Panel + AI chat ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* AI Decision Engine */}
+            <DecisionPanel decision={decision} loading={decisionLoading} />
+
+            {/* AI Chat */}
             <div style={{
               background: '#0f1520', border: '1px solid rgba(255,255,255,0.07)',
               borderRadius: 12, overflow: 'hidden',

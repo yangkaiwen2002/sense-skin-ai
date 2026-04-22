@@ -30,3 +30,10 @@ export const refreshPrices = () =>
   fetch(`${BASE_URL}/refresh-prices`, { method: 'POST' })
     .then(r => r.ok ? r.json() : null)
     .catch(() => null)
+
+// ── Scoring & intelligence ──────────────────────────────────────────────────
+export const getItemScore     = (id)          => request(`/items/${id}/score`)
+export const getItemDecision  = (id)          => request(`/items/${id}/decision`)
+export const getOpportunities = (limit = 8)   => request(`/opportunities?limit=${limit}`)
+export const getMarketSummary = ()            => request('/market-summary')
+export const getMarketEvents  = ()            => request('/market/events')
