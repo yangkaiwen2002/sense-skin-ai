@@ -11,11 +11,12 @@ Flow:
 
 import json
 import anthropic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.config import settings
+from app.limiter import limiter
 from app.rag.retriever import get_retriever
 
 router = APIRouter(prefix="/rag", tags=["rag"])
@@ -50,7 +51,8 @@ def _build_prompt(question: str, context: str) -> str:
 
 
 @router.post("/query")
-def rag_query(req: RAGRequest):
+@limiter.limit("20/5minute")
+def rag_query(request: Request, req: RAGRequest):
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
 

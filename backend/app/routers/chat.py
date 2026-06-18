@@ -1,13 +1,14 @@
 """AI chat streaming endpoint for SkinSense."""
 import json
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.config import settings
+from app.limiter import limiter
 from app.models.item import Item
 from app.services.analytics_service import get_item_overview
 from app.services.scoring import score_item
@@ -132,7 +133,8 @@ StatTrak: {"是" if item.stattrak else "否"} | 纪念品: {"是" if item.souven
 
 
 @router.post("/{item_id}/chat")
-def chat_stream(item_id: int, req: ChatRequest, db: Session = Depends(get_db)):
+@limiter.limit("30/5minute")
+def chat_stream(request: Request, item_id: int, req: ChatRequest, db: Session = Depends(get_db)):
     item = db.query(Item).filter(Item.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")

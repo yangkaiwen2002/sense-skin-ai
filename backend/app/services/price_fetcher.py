@@ -56,30 +56,38 @@ def _parse_volume(s: str | None) -> int | None:
 
 
 async def _fetch_one(client: httpx.AsyncClient, item_id: int, hash_name: str) -> dict | None:
-    try:
-        r = await client.get(
-            "https://steamcommunity.com/market/priceoverview/",
-            params={
-                "country": "CN",
-                "currency": "23",   # CNY
-                "appid": "730",     # CS2
-                "market_hash_name": hash_name,
-            },
-            timeout=12.0,
-        )
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        if not data.get("success"):
-            return None
-        return {
-            "item_id": item_id,
-            "price":   _parse_price(data.get("lowest_price")),
-            "median":  _parse_price(data.get("median_price")),
-            "volume":  _parse_volume(data.get("volume")),
-        }
-    except Exception:
-        return None
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            if attempt:
+                await asyncio.sleep(2 ** attempt)
+            r = await client.get(
+                "https://steamcommunity.com/market/priceoverview/",
+                params={
+                    "country": "CN",
+                    "currency": "23",   # CNY
+                    "appid": "730",     # CS2
+                    "market_hash_name": hash_name,
+                },
+                timeout=12.0,
+            )
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            if not data.get("success"):
+                continue
+            price = _parse_price(data.get("lowest_price"))
+            if price is None or price <= 0:
+                continue
+            return {
+                "item_id": item_id,
+                "price":   price,
+                "median":  _parse_price(data.get("median_price")),
+                "volume":  _parse_volume(data.get("volume")),
+            }
+        except Exception as e:
+            last_exc = e
+    return None
 
 
 async def refresh_all_prices(db: Session) -> dict:
