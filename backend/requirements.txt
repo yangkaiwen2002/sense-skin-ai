@@ -14,3 +14,11 @@ plotly==5.24.1
 scikit-learn>=1.5.0
 slowapi==0.1.9
 apscheduler==3.10.4
+
+# Hybrid RAG retrieval (FAISS + BM25 + TF-IDF)
+rank-bm25>=0.2.2
+faiss-cpu>=1.8.0
+sentence-transformers>=3.0.0
+
+# Test suite
+pytest>=8.0.0

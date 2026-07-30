@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     )
     BUFF_REFERER: str = "https://buff.163.com/market/"
 
+    # RAG hybrid retrieval
+    RAG_EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    RAG_ENABLE_FAISS: bool = True
+
     class Config:
         env_file = ".env"
 

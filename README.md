@@ -82,8 +82,8 @@ relevance = category_match × recency_weight × impact_strength × confidence
 
 The `event_signal` dimension feeds directly into the weighted score, and the decision engine receives the raw `event_impact_score` (−1.0 to +1.0) for its evidence accumulation.
 
-### 5. RAG-Based Market Knowledge
-A TF-IDF retrieval layer over a curated knowledge base covering:
+### 5. RAG-Based Market Knowledge (Hybrid Retrieval)
+A hybrid retrieval layer over a curated knowledge base (32 entries as of this writing) covering:
 - Rarity tiers and pricing dynamics
 - Exterior grades and float value impact
 - Tournament effects on skin demand
@@ -91,7 +91,28 @@ A TF-IDF retrieval layer over a curated knowledge base covering:
 - Rent vs buy decision framework
 - StatTrak premium logic
 
-When Claude answers a question in item chat, its system prompt is grounded with the full decision output, event context, and scoring breakdown — not just raw price data.
+Retrieval combines three independent engines, implemented in `backend/app/rag/`:
+
+| Engine | Library | Role |
+|---|---|---|
+| FAISS (`IndexFlatIP`, cosine similarity) | `faiss-cpu` + `sentence-transformers` (`paraphrase-multilingual-MiniLM-L12-v2`, 384-dim) | Semantic recall — finds relevant entries even when the query shares no literal words with the document (paraphrases, synonyms) |
+| BM25 (`BM25Okapi`) | `rank-bm25` | Keyword / term overlap — a custom mixed CN/EN tokenizer (`app/rag/tokenization.py`) lowercases English tokens and splits Chinese runs into overlapping character bigrams, since whitespace tokenization doesn't work for Chinese |
+| TF-IDF (`char_wb`, 2–4 grams) | `scikit-learn` | Exact character-level matching — strong on abbreviations, item names, and precise CN/EN substrings |
+
+The three ranked lists are combined with weighted **Reciprocal Rank Fusion** (`app/rag/fusion.py`), not by summing raw scores directly (their scales aren't comparable — BM25's unbounded term-weight sum vs. two different cosine-similarity ranges):
+
+```
+RRF_score(d) = w_faiss / (k + rank_faiss) + w_bm25 / (k + rank_bm25) + w_tfidf / (k + rank_tfidf)
+```
+with `k = 60` and default weights `FAISS = 0.45, BM25 = 0.35, TF-IDF = 0.20` (`FusionWeights` in `fusion.py`).
+
+**Degrade path**: FAISS is a soft dependency. If the embedding model can't be loaded (no network, no local model cache, `faiss-cpu`/`sentence-transformers` missing) the retriever logs a warning, excludes `faiss` from `active_retrievers`, and automatically renormalizes the BM25/TF-IDF weights to sum to 1 — the `/api/rag/query` endpoint keeps working on BM25 + TF-IDF only, it never raises because of a FAISS failure.
+
+Each result carries `fused_score` (kept as `score` too, for backward compatibility) plus a `retrieval_details` breakdown (`faiss_rank`/`faiss_score`, `bm25_rank`/`bm25_score`, `tfidf_rank`/`tfidf_score`, `active_retrievers`) so the fusion is auditable.
+
+**Known limitations**: the knowledge base is small (32 hand-written entries) and has not undergone large-scale retrieval evaluation — no Precision/Recall/MRR numbers exist for this system. Manual spot-checks show the fusion sometimes ranks a tangentially related document above the most on-topic one when a shorter document has a higher BM25 term weight. Weights (`0.45/0.35/0.20`) are a reasonable starting point, not a tuned/validated configuration.
+
+When Claude answers a question (RAG or item chat), its system prompt is grounded with the retrieved context (RAG) or the full decision output, event context, and scoring breakdown (item chat) — not just raw price data. If hybrid retrieval finds nothing for a question, the prompt explicitly tells Claude to say so rather than imply the answer came from the knowledge base.
 
 ---
 
@@ -111,12 +132,17 @@ backend/
 │   │   ├── event_mapper.py     # Per-item relevance scoring
 │   │   └── opportunity_detector.py  # Full-pipeline opportunity scan
 │   ├── rag/
-│   │   └── retriever.py        # TF-IDF retriever (scikit-learn, no API needed)
+│   │   ├── retriever.py        # HybridRetriever: orchestrates TF-IDF + BM25 + FAISS, RRF fusion
+│   │   ├── tokenization.py     # Mixed CN/EN tokenizer shared by the BM25 engine
+│   │   ├── embeddings.py       # sentence-transformers embedder + FAISS IndexFlatIP wrapper
+│   │   ├── fusion.py           # Reciprocal Rank Fusion (RRF) + FusionWeights
+│   │   └── models.py           # KnowledgeEntry / RetrievalResult / RetrievalDetail dataclasses
 │   └── utils/
 │       └── metrics.py          # compute_avg, compute_return, compute_volatility, compute_liquidity_score
 ├── data/
 │   ├── events.json             # 22 structured market signals (tournaments, patches, seasonal)
-│   └── knowledge.json          # RAG knowledge base (20+ articles)
+│   └── knowledge.json          # RAG knowledge base (32 articles)
+├── tests/                      # pytest suite for the hybrid retriever + RRF + API validation
 └── seed/
     └── seed_data.py            # 31 real items with BUFF market prices
 ```
@@ -146,7 +172,7 @@ frontend/src/
 | `GET /api/market/events` | Active market events with timing labels |
 | `GET /api/market-summary` | Market mood, buy signals, avg score |
 | `POST /api/items/{id}/chat` | Streaming AI chat grounded in decision context |
-| `POST /api/rag/query` | RAG query over knowledge base |
+| `POST /api/rag/query` | RAG query over knowledge base (hybrid FAISS+BM25+TF-IDF retrieval) |
 
 ---
 
@@ -166,6 +192,11 @@ curl -X POST http://localhost:8000/api/seed
 cd frontend
 npm install
 npm run dev
+
+# Backend tests (no network required; FAISS-dependent cases use a fake
+# embedder — see backend/tests/conftest.py)
+cd backend
+pytest tests/
 ```
 
 ---
@@ -176,7 +207,7 @@ npm run dev
 |-------|-----------|
 | Backend | Python 3.12, FastAPI, SQLAlchemy, SQLite |
 | AI | Claude claude-opus-4-6 (Anthropic SDK, streaming) |
-| Retrieval | scikit-learn TF-IDF (char_wb n-grams, mixed CJK/EN) |
+| Retrieval | Hybrid: FAISS (`faiss-cpu` + `sentence-transformers`, semantic) + BM25 (`rank-bm25`, keyword) + scikit-learn TF-IDF (char_wb n-grams, exact CN/EN substrings), fused with weighted RRF |
 | Frontend | React 18, Vite 5, Tailwind CSS |
 | Scoring | Pure Python — deterministic, no LLM in scoring loop |
 
