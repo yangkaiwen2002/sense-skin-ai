@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
-
-const BASE_URL = 'http://localhost:8000/api'
+import { BookOpen, PaperPlaneRight } from '@phosphor-icons/react'
+import { BASE_URL } from '../services/api'
+import Button from './ui/Button'
+import Skeleton from './ui/Skeleton'
 
 const SUGGESTED = [
   '龙狙为什么最近波动这么大？',
@@ -12,30 +14,18 @@ const SUGGESTED = [
 ]
 
 const CATEGORY_LABEL = {
-  rent_vs_buy: '租 vs 买',
-  tournament_effects: '赛事影响',
-  price_factors: '价格因素',
-  rarity_guide: '稀有度',
-  specific_skins: '皮肤分析',
-  skin_investment: '投资策略',
-  market_mechanics: '市场机制',
-  platform_comparison: '平台对比',
+  rent_vs_buy: '租 vs 买', tournament_effects: '赛事影响', price_factors: '价格因素',
+  rarity_guide: '稀有度', specific_skins: '皮肤分析', skin_investment: '投资策略',
+  market_mechanics: '市场机制', platform_comparison: '平台对比',
 }
 
 function SourceTag({ source }) {
   const label = CATEGORY_LABEL[source.category] || source.category
   return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      background: 'rgba(74,142,245,0.08)',
-      border: '1px solid rgba(74,142,245,0.2)',
-      borderRadius: 6, padding: '3px 9px',
-      fontSize: 11, color: '#7eb3ff',
-    }}>
-      <span style={{ opacity: 0.5, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        {label}
-      </span>
-      <span style={{ fontWeight: 600 }}>{source.title}</span>
+    <div className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 py-1 text-[11px]"
+      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: 'var(--accent-strong)' }}>
+      <span className="opacity-50 text-[9px] uppercase tracking-wide">{label}</span>
+      <span className="font-semibold">{source.title}</span>
     </div>
   )
 }
@@ -53,13 +43,11 @@ export default function AskSense() {
     if (!text) return
     if (q) setQuestion(q)
 
-    // Reset state
     setAnswer('')
     setSources([])
     setError('')
     setLoading(true)
 
-    // Abort previous request if any
     if (abortRef.current) abortRef.current.abort()
     const ctrl = new AbortController()
     abortRef.current = ctrl
@@ -85,15 +73,12 @@ export default function AskSense() {
         const { done, value } = await reader.read()
         if (done) break
         buf += decoder.decode(value, { stream: true })
-
         const lines = buf.split('\n')
-        buf = lines.pop()  // keep incomplete line
-
+        buf = lines.pop()
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const raw = line.slice(6)
           if (raw === '[DONE]') { setLoading(false); return }
-
           try {
             const evt = JSON.parse(raw)
             if (evt.type === 'sources') setSources(evt.sources)
@@ -112,51 +97,25 @@ export default function AskSense() {
   const hasResult = answer || sources.length > 0
 
   return (
-    <div style={{
-      background: 'linear-gradient(145deg, #0f1520 0%, #0d1320 100%)',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: 16, padding: '28px 28px 24px',
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: 'linear-gradient(135deg, #4a8ef5, #8b5cf6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, flexShrink: 0,
-        }}>◎</div>
+    <div className="surface-card p-5 sm:p-6">
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }}>
+          <BookOpen size={16} weight="bold" style={{ color: 'var(--accent-strong)' }} />
+        </div>
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'white', lineHeight: 1 }}>
-            Ask Sense
-          </h2>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>
-            基于知识库的 CS2 市场问答 · RAG 检索增强
-          </p>
+          <h2 className="text-base font-bold text-[var(--text-primary)] leading-none">Ask Sense</h2>
+          <p className="text-[11px] text-[var(--text-dim)] mt-0.5">基于知识库的 CS2 市场问答 · RAG 检索增强</p>
         </div>
       </div>
 
-      {/* Suggested questions */}
       {!hasResult && !loading && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
+        <div className="flex flex-wrap gap-1.5 mb-4">
           {SUGGESTED.map(s => (
             <button
               key={s}
               onClick={() => submit(s)}
-              style={{
-                fontSize: 11, color: 'var(--text-secondary)',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 6, padding: '5px 11px',
-                cursor: 'pointer', transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'rgba(74,142,245,0.3)'
-                e.currentTarget.style.color = '#7eb3ff'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-                e.currentTarget.style.color = 'var(--text-secondary)'
-              }}
+              className="text-[11px] text-[var(--text-secondary)] bg-white/[0.04] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] px-2.5 py-1.5
+                transition-colors duration-150 hover:border-[var(--accent-border)] hover:text-[var(--accent-strong)]"
             >
               {s}
             </button>
@@ -164,110 +123,56 @@ export default function AskSense() {
         </div>
       )}
 
-      {/* Input area */}
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div className="flex gap-2">
         <input
           value={question}
           onChange={e => setQuestion(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && submit()}
           placeholder="问任何关于 CS2 饰品市场的问题…"
           disabled={loading}
-          style={{
-            flex: 1, background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 9, padding: '11px 14px',
-            color: 'var(--text-primary)', fontSize: 13, outline: 'none',
-            transition: 'border-color 0.15s',
-          }}
-          onFocus={e => e.target.style.borderColor = 'rgba(74,142,245,0.4)'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+          className="flex-1 min-w-0 min-h-[44px] bg-white/[0.05] border border-[var(--border-default)] rounded-[var(--radius-sm)]
+            px-3.5 py-2.5 text-[13px] text-[var(--text-primary)] outline-none transition-colors duration-150
+            focus:border-[var(--accent-border)] placeholder:text-[var(--text-dim)]"
         />
-        <button
-          onClick={() => submit()}
-          disabled={loading || !question.trim()}
-          style={{
-            background: loading || !question.trim()
-              ? 'rgba(74,142,245,0.2)'
-              : 'linear-gradient(135deg, #4a8ef5, #6366f1)',
-            border: 'none', borderRadius: 9, padding: '11px 20px',
-            color: loading || !question.trim() ? 'rgba(255,255,255,0.3)' : 'white',
-            fontSize: 13, fontWeight: 600, cursor: loading || !question.trim() ? 'not-allowed' : 'pointer',
-            transition: 'all 0.15s', flexShrink: 0,
-          }}
-        >
-          {loading ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span className="typing-dot" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
-              <span className="typing-dot" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
-              <span className="typing-dot" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
-            </span>
-          ) : '提问'}
-        </button>
+        <Button variant="primary" onClick={() => submit()} disabled={loading || !question.trim()} loading={loading} className="shrink-0">
+          {!loading && <PaperPlaneRight size={14} weight="bold" />}
+          提问
+        </Button>
       </div>
 
-      {/* Error */}
       {error && (
-        <div style={{
-          marginTop: 14, padding: '10px 14px', borderRadius: 8,
-          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-          color: '#fca5a5', fontSize: 12,
-        }}>
+        <div className="mt-3.5 px-3.5 py-2.5 rounded-[var(--radius-sm)] text-xs" style={{ background: 'var(--avoid-soft)', border: '1px solid rgba(229,72,77,0.25)', color: '#f5a3a6' }}>
           {error}
         </div>
       )}
 
-      {/* Sources */}
       {sources.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            参考知识片段
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div className="mt-4">
+          <p className="text-[10px] text-[var(--text-dim)] mb-1.5 uppercase tracking-wide">参考知识片段</p>
+          <div className="flex flex-wrap gap-1.5">
             {sources.map(s => <SourceTag key={s.id} source={s} />)}
           </div>
         </div>
       )}
 
-      {/* Answer */}
       {answer && (
-        <div style={{
-          marginTop: 16, padding: '16px 18px',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 10,
-        }}>
-          <p style={{
-            fontSize: 13, color: 'var(--text-primary)',
-            lineHeight: 1.8, whiteSpace: 'pre-wrap',
-          }}>
-            {answer}
-          </p>
+        <div className="mt-4 px-4 py-3.5 rounded-[var(--radius-sm)] bg-white/[0.03] border border-[var(--border-subtle)]">
+          <p className="text-[13px] text-[var(--text-primary)] leading-[1.8] whitespace-pre-wrap">{answer}</p>
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading && !answer && (
-        <div style={{ marginTop: 16 }}>
-          {[100, 85, 70].map((w, i) => (
-            <div key={i} style={{
-              height: 12, width: `${w}%`,
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: 4, marginBottom: 10,
-              animation: 'pulse 1.6s ease infinite',
-              animationDelay: `${i * 0.15}s`,
-            }} />
-          ))}
+        <div className="mt-4 space-y-2.5">
+          <Skeleton w="100%" h={12} />
+          <Skeleton w="85%" h={12} />
+          <Skeleton w="70%" h={12} />
         </div>
       )}
 
-      {/* Reset */}
       {hasResult && !loading && (
         <button
           onClick={() => { setAnswer(''); setSources([]); setQuestion(''); setError('') }}
-          style={{
-            marginTop: 14, fontSize: 11, color: 'var(--text-dim)',
-            background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
-          }}
+          className="mt-3.5 text-[11px] text-[var(--text-dim)] hover:text-[var(--text-secondary)] transition-colors"
         >
           ← 清空，重新提问
         </button>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-
-const BASE_URL = 'http://localhost:8000/api'
+import { PaperPlaneRight, Circle } from '@phosphor-icons/react'
+import { BASE_URL } from '../services/api'
 
 async function* streamChat(itemId, message, history) {
   const res = await fetch(`${BASE_URL}/items/${itemId}/chat`, {
@@ -43,7 +43,6 @@ const QUICK_QUESTIONS = [
   '现在值得买吗？',
   '未来价格走势如何？',
   '同价位有更好的推荐吗？',
-  '这个皮肤稀不稀有？',
 ]
 
 export default function AIChat({ itemId, itemName }) {
@@ -51,6 +50,7 @@ export default function AIChat({ itemId, itemName }) {
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
+  const [chatError, setChatError] = useState(false)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -64,22 +64,26 @@ export default function AIChat({ itemId, itemName }) {
     setInput('')
     setStreaming(true)
     setStreamingText('')
+    setChatError(false)
 
     const newHistory = [...history, { role: 'user', content: msg }]
     setHistory(newHistory)
 
     let full = ''
+    let failed = false
     try {
       for await (const chunk of streamChat(itemId, msg, history)) {
+        if (chunk.startsWith('[错误]')) failed = true
         full += chunk
         setStreamingText(full)
       }
-    } catch (err) {
-      full = `连接失败，请稍后重试。`
+    } catch {
+      full = '连接失败，请稍后重试。'
+      failed = true
       setStreamingText(full)
     }
 
-    setHistory([...newHistory, { role: 'assistant', content: full }])
+    setHistory([...newHistory, { role: 'assistant', content: full, error: failed }])
     setStreamingText('')
     setStreaming(false)
     inputRef.current?.focus()
@@ -95,84 +99,28 @@ export default function AIChat({ itemId, itemName }) {
   const showQuickQuestions = history.length === 0 && !streaming
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        minHeight: 400,
-        background: 'rgba(14,17,23,0.6)',
-        borderRadius: 12,
-        border: '1px solid rgba(255,255,255,0.07)',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="flex flex-col h-full min-h-[340px]">
       {/* Header */}
-      <div
-        style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: '#4a8ef5',
-            boxShadow: '0 0 8px rgba(74,142,245,0.6)',
-          }}
-          className="live-dot"
-        />
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>AI 分析师</span>
-        <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 'auto' }}>
-          Claude · {itemName || '当前饰品'}
-        </span>
+      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] flex items-center gap-2 shrink-0">
+        <Circle size={7} weight="fill" className="glow-pulse" style={{ color: 'var(--accent)' }} />
+        <span className="text-xs font-semibold text-[var(--text-primary)]">AI 分析师</span>
+        <span className="text-[10px] text-[var(--text-dim)] ml-auto truncate max-w-[120px]">Claude · {itemName || '当前饰品'}</span>
       </div>
 
-      {/* Messages area */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        {/* Empty state / quick questions */}
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-3.5 flex flex-col gap-2.5">
         {showQuickQuestions && (
           <div>
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', marginBottom: 16 }}>
-              基于实时市场数据，向 AI 提问关于这个饰品的任何问题
+            <p className="text-[11px] text-[var(--text-dim)] text-center mb-3 leading-relaxed">
+              基于实时市场数据，向 AI 提问关于这个饰品的问题
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="flex flex-col gap-1.5">
               {QUICK_QUESTIONS.map(q => (
                 <button
                   key={q}
                   onClick={() => send(q)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '8px 12px',
-                    background: 'rgba(74,142,245,0.06)',
-                    border: '1px solid rgba(74,142,245,0.15)',
-                    borderRadius: 8,
-                    color: 'rgba(255,255,255,0.6)',
-                    fontSize: 12,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                  onMouseEnter={e => {
-                    e.target.style.background = 'rgba(74,142,245,0.12)'
-                    e.target.style.color = 'rgba(255,255,255,0.85)'
-                  }}
-                  onMouseLeave={e => {
-                    e.target.style.background = 'rgba(74,142,245,0.06)'
-                    e.target.style.color = 'rgba(255,255,255,0.6)'
-                  }}
+                  className="text-left px-3 py-2 rounded-[var(--radius-sm)] text-xs transition-colors duration-150
+                    bg-[var(--accent-soft)] border border-[var(--accent-border)] text-white/60 hover:text-white/85 hover:bg-[var(--accent-soft)]"
                 >
                   {q}
                 </button>
@@ -181,30 +129,17 @@ export default function AIChat({ itemId, itemName }) {
           </div>
         )}
 
-        {/* Message history */}
         {history.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div key={i} className="flex flex-col gap-0.5">
             {msg.role === 'user' ? (
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <div
-                  className="chat-bubble-user"
-                  style={{ maxWidth: '82%', padding: '8px 12px', fontSize: 13, lineHeight: 1.5 }}
-                >
-                  {msg.content}
-                </div>
+              <div className="flex justify-end">
+                <div className="chat-bubble-user max-w-[82%] px-3 py-2 text-[13px] leading-relaxed">{msg.content}</div>
               </div>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div className="flex justify-start">
                 <div
-                  className="chat-bubble-ai"
-                  style={{
-                    maxWidth: '92%',
-                    padding: '10px 14px',
-                    fontSize: 13,
-                    lineHeight: 1.65,
-                    color: 'var(--text-primary)',
-                    whiteSpace: 'pre-wrap',
-                  }}
+                  className="chat-bubble-ai max-w-[92%] px-3.5 py-2.5 text-[13px] leading-[1.65] whitespace-pre-wrap"
+                  style={{ color: msg.error ? 'var(--avoid)' : 'var(--text-primary)' }}
                 >
                   {msg.content}
                 </div>
@@ -213,28 +148,17 @@ export default function AIChat({ itemId, itemName }) {
           </div>
         ))}
 
-        {/* Streaming response */}
         {streaming && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <div
-              className="chat-bubble-ai"
-              style={{
-                maxWidth: '92%',
-                padding: '10px 14px',
-                fontSize: 13,
-                lineHeight: 1.65,
-                color: 'var(--text-primary)',
-                whiteSpace: 'pre-wrap',
-              }}
-            >
+          <div className="flex justify-start">
+            <div className="chat-bubble-ai max-w-[92%] px-3.5 py-2.5 text-[13px] leading-[1.65] text-[var(--text-primary)] whitespace-pre-wrap">
               {streamingText || (
-                <span style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '2px 0' }}>
-                  <span className="typing-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#4a8ef5', display: 'inline-block' }} />
-                  <span className="typing-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#4a8ef5', display: 'inline-block' }} />
-                  <span className="typing-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#4a8ef5', display: 'inline-block' }} />
+                <span className="flex gap-1 items-center py-0.5">
+                  <span className="typing-dot w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'var(--accent)' }} />
+                  <span className="typing-dot w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'var(--accent)' }} />
+                  <span className="typing-dot w-1.5 h-1.5 rounded-full inline-block" style={{ background: 'var(--accent)' }} />
                 </span>
               )}
-              {streamingText && <span style={{ opacity: 0.5 }}>▌</span>}
+              {streamingText && <span className="opacity-50">▌</span>}
             </div>
           </div>
         )}
@@ -243,15 +167,7 @@ export default function AIChat({ itemId, itemName }) {
       </div>
 
       {/* Input */}
-      <div
-        style={{
-          padding: '12px 16px',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          gap: 8,
-          flexShrink: 0,
-        }}
-      >
+      <div className="px-3.5 py-3 border-t border-[var(--border-subtle)] flex gap-2 shrink-0">
         <input
           ref={inputRef}
           value={input}
@@ -259,37 +175,22 @@ export default function AIChat({ itemId, itemName }) {
           onKeyDown={handleKey}
           disabled={streaming}
           placeholder="问问 AI 关于这个饰品…"
-          style={{
-            flex: 1,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.09)',
-            borderRadius: 8,
-            padding: '8px 12px',
-            fontSize: 13,
-            color: 'var(--text-primary)',
-            outline: 'none',
-            transition: 'border-color 0.15s ease',
-          }}
-          onFocus={e => e.target.style.borderColor = 'rgba(74,142,245,0.4)'}
-          onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.09)'}
+          className="flex-1 min-w-0 bg-white/[0.05] border border-[var(--border-default)] rounded-[var(--radius-sm)]
+            px-3 py-2 text-[13px] text-[var(--text-primary)] outline-none transition-colors duration-150
+            focus:border-[var(--accent-border)] placeholder:text-[var(--text-dim)]"
         />
         <button
           onClick={() => send()}
           disabled={streaming || !input.trim()}
+          aria-label="发送"
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-[var(--radius-sm)] transition-colors duration-150
+            disabled:cursor-not-allowed active:scale-95"
           style={{
-            padding: '8px 14px',
-            background: streaming || !input.trim() ? 'rgba(74,142,245,0.2)' : '#4a8ef5',
-            border: 'none',
-            borderRadius: 8,
+            background: streaming || !input.trim() ? 'var(--accent-soft)' : 'var(--accent)',
             color: streaming || !input.trim() ? 'rgba(255,255,255,0.3)' : 'white',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: streaming || !input.trim() ? 'not-allowed' : 'pointer',
-            transition: 'all 0.15s ease',
-            flexShrink: 0,
           }}
         >
-          发送
+          <PaperPlaneRight size={16} weight="fill" />
         </button>
       </div>
     </div>

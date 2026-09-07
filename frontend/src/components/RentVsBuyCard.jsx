@@ -1,57 +1,45 @@
 import { formatCNY } from '../utils/formatters'
 
-export default function RentVsBuyCard({ rent_cost, buy_resale_loss, recommendation, explanation, days, rental_platform, buy_platform }) {
-  const isRent = recommendation === 'rent'
-  const isBuy = recommendation === 'buy'
-
+function Plan({ label, amount, sub, recommended, platform, pros, cons }) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-      <div className="grid grid-cols-2 divide-x divide-slate-700">
-        <div className={`p-5 ${isRent ? 'bg-cyan-900/20' : ''}`}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-slate-300 font-semibold text-sm">租赁方案</span>
-            {isRent && (
-              <span className="bg-cyan-500/20 text-cyan-300 text-xs px-2 py-0.5 rounded-full border border-cyan-500/30">
-                推荐
-              </span>
-            )}
-          </div>
-          <p className="text-3xl font-bold text-white">{rent_cost != null ? formatCNY(rent_cost) : '不可用'}</p>
-          <p className="text-slate-500 text-xs mt-1">{days} 天租赁总费用</p>
-          {rental_platform && (
-            <p className="text-slate-400 text-xs mt-2">平台：{rental_platform}</p>
-          )}
-          <div className="mt-3 pt-3 border-t border-slate-700/50">
-            <p className="text-slate-500 text-xs">优点：无需大额资金，用完即还</p>
-            <p className="text-slate-500 text-xs mt-1">缺点：无法保值，持续付费</p>
-          </div>
-        </div>
+    <div className={`p-5 ${recommended ? 'bg-[var(--accent-soft)]' : ''}`}>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[var(--text-secondary)] font-semibold text-sm">{label}</span>
+        {recommended && (
+          <span className="text-xs rounded-[var(--radius-sm)] px-2 py-0.5" style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)', border: '1px solid var(--accent-border)' }}>推荐</span>
+        )}
+      </div>
+      <p className="price-display text-3xl">{amount != null ? formatCNY(amount) : '不可用'}</p>
+      <p className="text-[var(--text-dim)] text-xs mt-1">{sub}</p>
+      {platform && <p className="text-[var(--text-secondary)] text-xs mt-2">平台：{platform}</p>}
+      <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] space-y-1">
+        <p className="text-[var(--text-dim)] text-xs">优点：{pros}</p>
+        <p className="text-[var(--text-dim)] text-xs">缺点：{cons}</p>
+      </div>
+    </div>
+  )
+}
 
-        <div className={`p-5 ${isBuy ? 'bg-cyan-900/20' : ''}`}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-slate-300 font-semibold text-sm">购买方案</span>
-            {isBuy && (
-              <span className="bg-cyan-500/20 text-cyan-300 text-xs px-2 py-0.5 rounded-full border border-cyan-500/30">
-                推荐
-              </span>
-            )}
-          </div>
-          <p className="text-3xl font-bold text-white">{buy_resale_loss != null ? formatCNY(buy_resale_loss) : '—'}</p>
-          <p className="text-slate-500 text-xs mt-1">{days} 天持有后转卖预估损耗</p>
-          {buy_platform && (
-            <p className="text-slate-400 text-xs mt-2">平台：{buy_platform}</p>
-          )}
-          <div className="mt-3 pt-3 border-t border-slate-700/50">
-            <p className="text-slate-500 text-xs">优点：可保值，价格上涨可盈利</p>
-            <p className="text-slate-500 text-xs mt-1">缺点：需要较多前期资金</p>
-          </div>
-        </div>
+export default function RentVsBuyCard({ rent_cost, buy_resale_loss, recommendation, explanation, days, rental_platform, buy_platform }) {
+  return (
+    <div className="surface-card overflow-hidden p-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)]">
+        <Plan
+          label="租赁方案" amount={rent_cost} sub={`${days} 天租赁总费用`}
+          recommended={recommendation === 'rent'} platform={rental_platform}
+          pros="无需大额资金，用完即还" cons="无法保值，持续付费"
+        />
+        <Plan
+          label="购买方案" amount={buy_resale_loss} sub={`${days} 天持有后转卖预估损耗`}
+          recommended={recommendation === 'buy'} platform={buy_platform}
+          pros="可保值，价格上涨可盈利" cons="需要较多前期资金"
+        />
       </div>
 
       {explanation && (
-        <div className="px-5 py-4 border-t border-slate-700 bg-slate-900/30">
-          <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-2">分析结论</p>
-          <p className="text-slate-200 text-sm leading-relaxed">{explanation}</p>
+        <div className="px-5 py-4 border-t border-[var(--border-subtle)]" style={{ background: 'rgba(0,0,0,0.2)' }}>
+          <p className="text-[var(--text-dim)] text-xs font-medium uppercase tracking-wide mb-2">分析结论</p>
+          <p className="text-[var(--text-primary)] text-sm leading-relaxed">{explanation}</p>
         </div>
       )}
     </div>

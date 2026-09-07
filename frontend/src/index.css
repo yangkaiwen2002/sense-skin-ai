@@ -2,27 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ────────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   Foundation: near-black graphite, one locked blue accent (brand),
+   gold reserved exclusively for price/value/opportunity signals,
+   CS2 rarity colors preserved as meaningful data color (never reused
+   as UI chrome).
+──────────────────────────────────────────────────────────────── */
 :root {
-  --bg-page: #080c14;
-  --bg-card: #0f1520;
-  --bg-surface: #131a28;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-hover: rgba(255, 255, 255, 0.14);
-  --price: #f5a623;
-  --accent: #4a8ef5;
-  --accent-purple: #8b5cf6;
-  --green: #22c55e;
-  --red: #ef4444;
-  --text-primary: #e2e8f0;
-  --text-secondary: #7c8fa6;
-  --text-dim: #3d4f63;
+  /* Surfaces */
+  --bg-canvas: #08090b;
+  --bg-page: #08090b;
+  --bg-surface: #121317;
+  --bg-card: #121317;
+  --bg-surface-raised: #17181d;
+  --bg-surface-sunken: #060708;
 
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border: var(--border-subtle);
+  --border-hover: var(--border-default);
+
+  /* Text */
+  --text-primary: #EDEEF1;
+  --text-secondary: #9AA0AC;
+  --text-dim: #626870;
+  --text-disabled: #454952;
+
+  /* Brand accent — deep signal blue, one accent, locked everywhere */
+  --accent: #2E56E8;
+  --accent-strong: #4472FF;
+  --accent-dim: #1C3FC4;
+  --accent-soft: rgba(46, 86, 232, 0.12);
+  --accent-border: rgba(46, 86, 232, 0.32);
+
+  /* Gold — reserved exclusively for price / value / opportunity signals */
+  --gold: #E5A93B;
+  --gold-strong: #F2BC5C;
+  --gold-soft: rgba(229, 169, 59, 0.12);
+  --gold-border: rgba(229, 169, 59, 0.32);
+  --price: var(--gold);
+
+  /* Semantic decision / movement colors */
+  --buy: #2FB866;
+  --buy-soft: rgba(47, 184, 102, 0.12);
+  --watch: var(--accent);
+  --watch-soft: var(--accent-soft);
+  --hold: var(--gold);
+  --hold-soft: var(--gold-soft);
+  --avoid: #E5484D;
+  --avoid-soft: rgba(229, 72, 77, 0.12);
+  --up: var(--buy);
+  --down: var(--avoid);
+
+  /* CS2 rarity — real game convention, data color only, never UI chrome */
+  --rarity-contraband: #e4ae39;
   --rarity-covert: #eb4b4b;
   --rarity-classified: #d32ce6;
   --rarity-restricted: #8847ff;
   --rarity-milspec: #4b69ff;
   --rarity-industrial: #5e98d9;
-  --rarity-contraband: #e4ae39;
+  --rarity-consumer: #b0c3d9;
+
+  /* Radius — three steps only */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Shadows — tinted toward near-black, not pure black */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55);
+  --shadow-accent: 0 0 0 1px var(--accent-border), 0 8px 24px rgba(46, 86, 232, 0.22);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 500ms;
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", "Helvetica Neue", Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo,
+    Consolas, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,95 +97,122 @@ html { scroll-behavior: smooth; }
 body {
   background-color: var(--bg-page);
   color: var(--text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.10); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
-/* ── Skin card ── */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Numeric / financial data always renders tabular + mono for a terminal-grade feel */
+.font-tabular,
+.price-display,
+.mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.price-display {
+  color: var(--price);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ── Card surface (used sparingly — elevation communicates real hierarchy) ── */
+.surface-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+/* ── Skin / item card ── */
 .skin-card {
-  background: linear-gradient(145deg, #111827 0%, #0d1420 100%);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 10px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: transform var(--dur-base) var(--ease-standard),
+    box-shadow var(--dur-base) var(--ease-standard),
+    border-color var(--dur-base) var(--ease-standard);
   position: relative;
   overflow: hidden;
   cursor: pointer;
 }
-.skin-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, transparent 60%);
-  pointer-events: none;
-}
 .skin-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.7);
-  border-color: rgba(255,255,255,0.16);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-default);
   z-index: 1;
 }
+.skin-card:active { transform: translateY(-1px) scale(0.99); }
 
-/* Rarity top lines */
-.rarity-covert    { border-top: 2px solid var(--rarity-covert);    }
+/* Rarity top accent — the app's signature data-color device */
+.rarity-covert { border-top: 2px solid var(--rarity-covert); }
 .rarity-classified { border-top: 2px solid var(--rarity-classified); }
 .rarity-restricted { border-top: 2px solid var(--rarity-restricted); }
-.rarity-milspec   { border-top: 2px solid var(--rarity-milspec);   }
+.rarity-milspec { border-top: 2px solid var(--rarity-milspec); }
 .rarity-industrial { border-top: 2px solid var(--rarity-industrial); }
 .rarity-contraband { border-top: 2px solid var(--rarity-contraband); }
 
 /* ── Animations ── */
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 @keyframes scoreGrow { from { width: 0; } }
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 @keyframes glowPulse {
-  0%,100% { opacity: 0.5; }
+  0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
 }
 @keyframes typingDot {
-  0%,60%,100% { opacity: 0.2; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-4px); }
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
 }
 
-.animate-up { animation: fadeUp 0.4s ease both; }
-.score-bar-fill { animation: scoreGrow 0.9s cubic-bezier(.16,1,.3,1) both; }
-.glow-pulse { animation: glowPulse 2.5s ease infinite; }
+.animate-up { animation: fadeUp var(--dur-slow) var(--ease-standard) both; }
+.score-bar-fill { animation: scoreGrow 0.8s var(--ease-standard) both; }
+.glow-pulse { animation: glowPulse 2.4s ease infinite; }
 .typing-dot { animation: typingDot 1.2s ease infinite; }
-.typing-dot:nth-child(2) { animation-delay: 0.18s; }
-.typing-dot:nth-child(3) { animation-delay: 0.36s; }
+.typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .animate-up, .score-bar-fill, .glow-pulse, .typing-dot, .skin-card {
+    animation: none !important;
+    transition: none !important;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* ── Chat bubbles ── */
 .chat-bubble-user {
-  background: rgba(74,142,245,0.1);
-  border: 1px solid rgba(74,142,245,0.2);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
   border-radius: 14px 14px 3px 14px;
 }
 .chat-bubble-ai {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
   border-radius: 14px 14px 14px 3px;
 }
 
-/* ── Price display ── */
-.price-display {
-  color: var(--price);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-
-/* ── Hero gradient ── */
+/* ── Hero ambient gradient (single, restrained — never purple) ── */
 .hero-gradient {
   background:
-    radial-gradient(ellipse 80% 60% at 20% 50%, rgba(74,142,245,0.08) 0%, transparent 60%),
-    linear-gradient(180deg, #0a0f1c 0%, #080c14 100%);
+    radial-gradient(ellipse 80% 60% at 20% 50%, rgba(46, 86, 232, 0.07) 0%, transparent 60%),
+    linear-gradient(180deg, #0a0b0e 0%, #08090b 100%);
 }

@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CaretRight } from '@phosphor-icons/react'
 import { searchItems, rentVsBuy } from '../services/api'
 import RentVsBuyCard from '../components/RentVsBuyCard'
+import Button from '../components/ui/Button'
+
+const QUICK_DAYS = [3, 7, 14, 30]
 
 export default function RentVsBuy() {
   const navigate = useNavigate()
@@ -19,7 +23,7 @@ export default function RentVsBuy() {
     if (!searchQuery.trim()) { setSuggestions([]); return }
     const t = setTimeout(async () => {
       const res = await searchItems(searchQuery)
-      setSuggestions(res?.items || [])
+      setSuggestions(res?.items || res || [])
     }, 300)
     return () => clearTimeout(t)
   }, [searchQuery])
@@ -39,121 +43,106 @@ export default function RentVsBuy() {
     setResult(null)
     const res = await rentVsBuy(selectedItem.id, { days, budget })
     setLoading(false)
-    if (res) {
-      setResult(res)
-    } else {
-      setError('计算失败，请稍后重试')
-    }
+    if (res) setResult(res)
+    else setError('计算失败，请稍后重试')
   }
 
-  const QUICK_DAYS = [3, 7, 14, 30]
-
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex items-center gap-2 text-sm text-slate-500 mb-6">
-        <button onClick={() => navigate('/')} className="hover:text-slate-300 transition-colors">首页</button>
-        <span>/</span>
-        <span className="text-slate-300">租赁 vs 购买</span>
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex items-center gap-1.5 text-xs text-[var(--text-dim)] mb-5">
+        <button onClick={() => navigate('/')} className="hover:text-[var(--text-secondary)] transition-colors">首页</button>
+        <CaretRight size={11} />
+        <span className="text-[var(--text-secondary)]">租赁 vs 购买</span>
       </div>
 
-      <h1 className="text-2xl font-bold text-white mb-2">租赁 vs 购买分析</h1>
-      <p className="text-slate-400 text-sm mb-8">输入使用天数，系统自动计算租赁费用与购买后转卖的成本差异</p>
+      <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">租赁 vs 购买分析</h1>
+      <p className="text-[var(--text-dim)] text-sm mb-7 leading-relaxed">输入使用天数，系统自动计算租赁费用与购买后转卖的成本差异</p>
 
       <form onSubmit={handleSubmit} className="space-y-6 mb-8">
-        {/* Item search */}
         <div>
-          <label className="block text-slate-300 text-sm font-medium mb-2">饰品</label>
+          <label className="block text-[var(--text-secondary)] text-sm font-medium mb-2">饰品</label>
           <div className="relative">
             <input
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); if (!e.target.value) setSelectedItem(null) }}
               placeholder="搜索饰品..."
-              className="w-full bg-slate-800 border border-slate-600 text-white placeholder-slate-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500"
+              className="w-full min-h-[44px] bg-white/[0.05] border border-[var(--border-default)] text-[var(--text-primary)]
+                placeholder:text-[var(--text-dim)] rounded-[var(--radius-md)] px-4 py-3 text-sm outline-none
+                focus:border-[var(--accent-border)] transition-colors duration-150"
             />
             {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-xl overflow-hidden z-10 shadow-xl">
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-[var(--radius-md)] border border-[var(--border-default)] overflow-hidden z-10"
+                style={{ background: 'var(--bg-surface-raised)', boxShadow: 'var(--shadow-lg)' }}>
                 {suggestions.map(s => (
                   <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => selectItem(s)}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-700 border-b border-slate-700/50 last:border-0"
+                    key={s.id} type="button" onClick={() => selectItem(s)}
+                    className="w-full text-left min-h-[52px] px-4 py-2.5 hover:bg-white/[0.05] border-b border-white/[0.04] last:border-0 transition-colors"
                   >
-                    <p className="text-white text-sm">{s.skin_name || s.item_name}</p>
-                    <p className="text-slate-400 text-xs">{s.weapon_type}</p>
+                    <p className="text-[var(--text-primary)] text-sm font-medium">{s.skin_name || s.item_name}</p>
+                    <p className="text-[var(--text-dim)] text-xs mt-0.5">{s.weapon_type}</p>
                   </button>
                 ))}
               </div>
             )}
           </div>
           {selectedItem && (
-            <p className="text-cyan-400 text-xs mt-1.5">
-              已选择：{selectedItem.skin_name || selectedItem.item_name}
-            </p>
+            <p className="text-xs mt-1.5" style={{ color: 'var(--accent-strong)' }}>已选择：{selectedItem.skin_name || selectedItem.item_name}</p>
           )}
         </div>
 
-        {/* Days */}
         <div>
-          <label className="block text-slate-300 text-sm font-medium mb-2">使用天数</label>
-          <div className="flex gap-2 mb-3">
+          <label className="block text-[var(--text-secondary)] text-sm font-medium mb-2">使用天数</label>
+          <div className="flex gap-2 mb-3 flex-wrap">
             {QUICK_DAYS.map(d => (
               <button
-                key={d}
-                type="button"
-                onClick={() => setDays(d)}
-                className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                  days === d ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
-                }`}
+                key={d} type="button" onClick={() => setDays(d)}
+                className="min-h-[40px] px-4 rounded-[var(--radius-sm)] text-sm transition-colors duration-150"
+                style={{
+                  background: days === d ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                  color: days === d ? 'white' : 'var(--text-secondary)',
+                }}
               >
                 {d} 天
               </button>
             ))}
           </div>
-          <input
-            type="number"
-            value={days}
-            onChange={e => setDays(Math.max(1, Math.min(365, Number(e.target.value))))}
-            min={1}
-            max={365}
-            className="w-32 bg-slate-800 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500"
-          />
-          <span className="text-slate-400 text-sm ml-2">天</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="number" value={days}
+              onChange={e => setDays(Math.max(1, Math.min(365, Number(e.target.value))))}
+              min={1} max={365}
+              className="w-28 min-h-[40px] bg-white/[0.05] border border-[var(--border-default)] text-[var(--text-primary)] rounded-[var(--radius-sm)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-border)]"
+            />
+            <span className="text-[var(--text-dim)] text-sm">天</span>
+          </div>
         </div>
 
-        {/* Budget */}
         <div>
-          <label className="block text-slate-300 text-sm font-medium mb-2">预算上限（元）</label>
+          <label className="block text-[var(--text-secondary)] text-sm font-medium mb-2">预算上限（元）</label>
           <input
-            type="number"
-            value={budget}
+            type="number" value={budget}
             onChange={e => setBudget(Math.max(0, Number(e.target.value)))}
-            min={0}
-            step={100}
-            className="w-40 bg-slate-800 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500"
+            min={0} step={100}
+            className="w-36 min-h-[40px] bg-white/[0.05] border border-[var(--border-default)] text-[var(--text-primary)] rounded-[var(--radius-sm)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-border)]"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={!selectedItem || loading}
-          className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium px-8 py-3 rounded-xl transition-colors"
-        >
-          {loading ? '计算中...' : '开始分析'}
-        </button>
+        <Button type="submit" variant="primary" disabled={!selectedItem || loading} loading={loading}>
+          {loading ? '计算中…' : '开始分析'}
+        </Button>
       </form>
 
       {error && (
-        <div className="bg-red-900/20 border border-red-700/40 rounded-xl p-4 mb-6">
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className="rounded-[var(--radius-md)] p-4 mb-6" style={{ background: 'var(--avoid-soft)', border: '1px solid rgba(229,72,77,0.3)' }}>
+          <p className="text-sm" style={{ color: '#f5a3a6' }}>{error}</p>
         </div>
       )}
 
       {result && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-1 h-5 bg-cyan-500 rounded-full" />
-            <h2 className="text-white font-semibold">{result.item_name} · {result.days} 天分析结果</h2>
+            <div className="w-1 h-5 rounded-full" style={{ background: 'var(--accent)' }} />
+            <h2 className="text-[var(--text-primary)] font-semibold">{result.item_name} · {result.days} 天分析结果</h2>
           </div>
           <RentVsBuyCard
             rent_cost={result.rent_cost}
@@ -164,19 +153,9 @@ export default function RentVsBuy() {
             rental_platform={result.rental_platform}
             buy_platform={result.buy_platform}
           />
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => navigate(`/item/${selectedItem.id}`)}
-              className="text-sm text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 rounded-lg px-4 py-2 transition-colors"
-            >
-              查看价格详情
-            </button>
-            <button
-              onClick={() => navigate(`/compare/${selectedItem.id}`)}
-              className="text-sm text-slate-400 hover:text-slate-300 border border-slate-600 rounded-lg px-4 py-2 transition-colors"
-            >
-              平台对比
-            </button>
+          <div className="flex gap-2 mt-4 flex-wrap">
+            <Button variant="secondary" onClick={() => navigate(`/item/${selectedItem.id}`)}>查看价格详情</Button>
+            <Button variant="ghost" onClick={() => navigate(`/compare/${selectedItem.id}`)}>平台对比</Button>
           </div>
         </div>
       )}

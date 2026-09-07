@@ -1,33 +1,24 @@
 import { formatCNY } from '../utils/formatters'
 import { PLATFORM_COLORS } from '../utils/constants'
+import EmptyState from './ui/EmptyState'
+import { Table } from '@phosphor-icons/react'
+
+const HEADERS = ['平台', '当前价格', '7日均价', '买卖价差', '流动性', '溢价']
 
 export default function PlatformComparisonTable({ platforms = [] }) {
   if (!platforms.length) {
-    return (
-      <p style={{ color: 'var(--text-dim)', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>
-        暂无平台对比数据
-      </p>
-    )
+    return <EmptyState icon={Table} sub="暂无平台对比数据" />
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+    <div className="overflow-x-auto -mx-1 px-1">
+      <table className="w-full text-[13px] border-collapse min-w-[420px]">
         <thead>
-          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            {['平台', '当前价格', '7日均价', '买卖价差', '流动性', '溢价'].map(h => (
+          <tr className="border-b border-[var(--border-subtle)]">
+            {HEADERS.map(h => (
               <th
                 key={h}
-                style={{
-                  padding: '8px 12px',
-                  textAlign: h === '平台' ? 'left' : 'right',
-                  color: 'var(--text-dim)',
-                  fontWeight: 500,
-                  fontSize: 11,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  whiteSpace: 'nowrap',
-                }}
+                className={`px-3 py-2 font-medium text-[11px] uppercase tracking-wide whitespace-nowrap text-[var(--text-dim)] ${h === '平台' ? 'text-left' : 'text-right'}`}
               >
                 {h}
               </th>
@@ -38,86 +29,31 @@ export default function PlatformComparisonTable({ platforms = [] }) {
           {platforms.map((p, i) => (
             <tr
               key={p.platform}
-              style={{
-                borderBottom: i < platforms.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                background: p.is_best_price ? 'rgba(74,142,245,0.05)' : 'transparent',
-              }}
+              className={i < platforms.length - 1 ? 'border-b border-white/[0.04]' : ''}
+              style={{ background: p.is_best_price ? 'var(--accent-soft)' : 'transparent' }}
             >
-              <td style={{ padding: '10px 12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: '50%',
-                      background: PLATFORM_COLORS[p.platform] || '#4a8ef5',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{p.platform}</span>
+              <td className="px-3 py-2.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: PLATFORM_COLORS[p.platform] || 'var(--accent)' }} />
+                  <span className="font-medium text-[var(--text-primary)]">{p.platform}</span>
                   {p.is_best_price && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        background: 'rgba(74,142,245,0.15)',
-                        color: '#4a8ef5',
-                        border: '1px solid rgba(74,142,245,0.3)',
-                        borderRadius: 4,
-                        padding: '1px 5px',
-                      }}
-                    >
-                      最优
-                    </span>
+                    <span className="text-[10px] rounded px-1 py-px" style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)', border: '1px solid var(--accent-border)' }}>最优</span>
                   )}
                   {p.supports_rental && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        background: 'rgba(168,85,247,0.12)',
-                        color: '#a855f7',
-                        border: '1px solid rgba(168,85,247,0.25)',
-                        borderRadius: 4,
-                        padding: '1px 5px',
-                      }}
-                    >
-                      租赁
-                    </span>
+                    <span className="text-[10px] rounded px-1 py-px border border-[var(--border-default)] text-[var(--text-secondary)]">租赁</span>
                   )}
                 </div>
               </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--price)' }}>
-                {formatCNY(p.current_price)}
+              <td className="px-3 py-2.5 text-right price-display">{formatCNY(p.current_price)}</td>
+              <td className="px-3 py-2.5 text-right text-[var(--text-secondary)] font-tabular">{formatCNY(p.avg_7d)}</td>
+              <td className="px-3 py-2.5 text-right text-[var(--text-secondary)] font-tabular">{formatCNY(p.spread)}</td>
+              <td className="px-3 py-2.5 text-right font-tabular font-semibold" style={{
+                color: p.liquidity_score == null ? 'var(--text-dim)' : p.liquidity_score > 60 ? 'var(--buy)' : p.liquidity_score < 40 ? 'var(--avoid)' : 'var(--gold)',
+              }}>
+                {p.liquidity_score != null ? p.liquidity_score.toFixed(0) : '—'}
               </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>
-                {formatCNY(p.avg_7d)}
-              </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>
-                {formatCNY(p.spread)}
-              </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                <span
-                  style={{
-                    color:
-                      p.liquidity_score == null ? 'var(--text-dim)' :
-                      p.liquidity_score > 60 ? '#4caf50' :
-                      p.liquidity_score < 40 ? '#f44336' : '#f5a623',
-                    fontWeight: 600,
-                  }}
-                >
-                  {p.liquidity_score != null ? p.liquidity_score.toFixed(0) : '—'}
-                </span>
-              </td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                <span
-                  style={{
-                    color: p.price_vs_best_pct > 0 ? '#f97316' : 'var(--text-dim)',
-                    fontWeight: p.price_vs_best_pct > 0 ? 600 : 400,
-                  }}
-                >
-                  {p.price_vs_best_pct != null
-                    ? p.price_vs_best_pct === 0 ? '基准' : `+${p.price_vs_best_pct.toFixed(1)}%`
-                    : '—'}
-                </span>
+              <td className="px-3 py-2.5 text-right font-tabular" style={{ color: p.price_vs_best_pct > 0 ? 'var(--gold)' : 'var(--text-dim)', fontWeight: p.price_vs_best_pct > 0 ? 600 : 400 }}>
+                {p.price_vs_best_pct != null ? (p.price_vs_best_pct === 0 ? '基准' : `+${p.price_vs_best_pct.toFixed(1)}%`) : '—'}
               </td>
             </tr>
           ))}

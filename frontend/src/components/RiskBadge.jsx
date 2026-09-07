@@ -9,7 +9,7 @@ export default function RiskBadge({ labels = [] }) {
         return (
           <span
             key={label}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colors.bg} ${colors.border} ${colors.text}`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] text-xs font-medium border ${colors.bg} ${colors.border} ${colors.text}`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
             {RISK_LABELS_ZH[label] || label}
