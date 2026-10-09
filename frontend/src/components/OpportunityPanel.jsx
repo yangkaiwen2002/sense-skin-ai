@@ -1,3 +1,4 @@
+import SkinImage from './SkinImage'
 /**
  * OpportunityPanel — event-aware opportunity cards, decision-first.
  * Each card leads with the BUY/WATCH/HOLD/AVOID call, then score, price,
@@ -14,31 +15,6 @@ import Skeleton from './ui/Skeleton'
 
 const VAL_COLOR = { '低估': 'var(--buy)', '合理': 'var(--accent-strong)', '高估': 'var(--avoid)' }
 
-function CardImage({ iconUrl, name, rarity, size = 76 }) {
-  const c = RARITY_COLOR[rarity] || 'var(--accent)'
-  const src = iconUrl
-    ? (iconUrl.startsWith('http') ? iconUrl : `https://community.fastly.steamstatic.com/economy/image/${iconUrl}/360fx360f`)
-    : null
-
-  return (
-    <div
-      className="shrink-0 flex items-center justify-center rounded-[var(--radius-sm)] overflow-hidden"
-      style={{ width: size, height: size, background: `radial-gradient(ellipse at center, ${c}18 0%, transparent 70%)` }}
-    >
-      {src ? (
-        <img
-          src={src} alt={name}
-          className="max-w-[88%] max-h-[88%] object-contain"
-          style={{ filter: `drop-shadow(0 0 10px ${c}50)` }}
-          onError={e => { e.currentTarget.style.display = 'none' }}
-        />
-      ) : (
-        <span className="font-mono font-black text-xl opacity-50" style={{ color: c }}>{name?.[0] || '?'}</span>
-      )}
-    </div>
-  )
-}
-
 function OpportunityCard({ opp }) {
   const navigate = useNavigate()
   const meta = DECISION_META[opp.recommendation] || DECISION_META.HOLD
@@ -47,14 +23,16 @@ function OpportunityCard({ opp }) {
   return (
     <div
       onClick={() => navigate(`/item/${opp.item_id}`)}
+      role="button" tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/item/${opp.item_id}`) } }}
       className="snap-start shrink-0 w-[256px] relative overflow-hidden rounded-[var(--radius-md)] p-3 cursor-pointer
         transition-all duration-150 hover:-translate-y-[3px]"
       style={{
         background: 'var(--bg-card)',
-        border: `1px solid ${isBuy ? meta.color + '30' : 'var(--border-subtle)'}`,
+        border: `1px solid ${isBuy ? 'var(--border-default)' : 'var(--border-subtle)'}`,
       }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = meta.color + '55'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = isBuy ? meta.color + '30' : 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-border)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = isBuy ? 'var(--border-default)' : 'var(--border-subtle)'; e.currentTarget.style.boxShadow = 'none' }}
     >
       <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[var(--radius-md)] opacity-90" style={{ background: meta.color }} />
 
@@ -62,7 +40,7 @@ function OpportunityCard({ opp }) {
       <div className="flex items-center gap-1.5 mb-2.5 ml-1.5">
         <DecisionBadge recommendation={opp.recommendation} size="sm" />
         {opp.confidence != null && (
-          <span className="text-[10px] text-[var(--text-dim)] font-tabular">{Math.round(opp.confidence * 100)}% 置信</span>
+          <span className="text-[10px] text-[var(--text-dim)] font-tabular">{Math.round(opp.confidence * 100)}% 信号强度</span>
         )}
         {opp.valuation_label && (
           <span className="text-[9px] font-semibold ml-auto" style={{ color: VAL_COLOR[opp.valuation_label] || 'var(--text-dim)' }}>
@@ -72,7 +50,7 @@ function OpportunityCard({ opp }) {
       </div>
 
       <div className="flex items-start gap-2.5 ml-1.5">
-        <CardImage iconUrl={opp.icon_url} name={opp.skin_name} rarity={opp.rarity} />
+        <SkinImage iconUrl={opp.icon_url} name={opp.item_name} className="opportunity-art" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold text-[var(--text-primary)] leading-snug mb-0.5 truncate">{opp.skin_name}</p>
           <p className="text-[10px] text-[var(--text-dim)] mb-2 truncate">

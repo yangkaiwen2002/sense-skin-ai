@@ -1,0 +1,206 @@
+{
+  "version": "1.0",
+  "limitations": "24 author-labeled smoke queries over 32 static entries; not a held-out benchmark, human relevance study, or verification of market facts. Labels cover selected relevant entries, not exhaustive relevance. English queries deliberately test cross-language limitations. Latency excludes model loading and is machine-dependent. No weights tuned on these queries.",
+  "queries": [
+    {
+      "id": "zh-01",
+      "language": "zh",
+      "query": "皮肤磨损等级 FN 和 FT 有什么区别？",
+      "relevant_ids": [
+        2
+      ]
+    },
+    {
+      "id": "en-01",
+      "language": "en",
+      "query": "What do Factory New and Field-Tested mean?",
+      "relevant_ids": [
+        2
+      ]
+    },
+    {
+      "id": "zh-02",
+      "language": "zh",
+      "query": "StatTrak 为什么比普通版贵？",
+      "relevant_ids": [
+        3
+      ]
+    },
+    {
+      "id": "en-02",
+      "language": "en",
+      "query": "Why does StatTrak cost more than a normal skin?",
+      "relevant_ids": [
+        3
+      ]
+    },
+    {
+      "id": "zh-03",
+      "language": "zh",
+      "query": "刀用一个月是租还是买更省钱？",
+      "relevant_ids": [
+        4
+      ]
+    },
+    {
+      "id": "en-03",
+      "language": "en",
+      "query": "How should I compare renting versus buying a knife?",
+      "relevant_ids": [
+        4
+      ]
+    },
+    {
+      "id": "zh-04",
+      "language": "zh",
+      "query": "悠悠有品租赁要交多少押金？",
+      "relevant_ids": [
+        5,
+        17
+      ]
+    },
+    {
+      "id": "en-04",
+      "language": "en",
+      "query": "What deposit is required to rent on YouPin?",
+      "relevant_ids": [
+        5,
+        17
+      ]
+    },
+    {
+      "id": "zh-05",
+      "language": "zh",
+      "query": "Major 赛事怎样影响贴纸市场？",
+      "relevant_ids": [
+        7,
+        9
+      ]
+    },
+    {
+      "id": "en-05",
+      "language": "en",
+      "query": "How do Major tournaments affect sticker demand?",
+      "relevant_ids": [
+        7,
+        9
+      ]
+    },
+    {
+      "id": "zh-06",
+      "language": "zh",
+      "query": "龙狙为何稀缺且价格波动大？",
+      "relevant_ids": [
+        10
+      ]
+    },
+    {
+      "id": "en-06",
+      "language": "en",
+      "query": "Why is AWP Dragon Lore scarce and volatile?",
+      "relevant_ids": [
+        10
+      ]
+    },
+    {
+      "id": "zh-07",
+      "language": "zh",
+      "query": "AK-47 红线是否容易卖出？",
+      "relevant_ids": [
+        11,
+        25
+      ]
+    },
+    {
+      "id": "en-07",
+      "language": "en",
+      "query": "Is AK-47 Redline easy to resell?",
+      "relevant_ids": [
+        11,
+        25
+      ]
+    },
+    {
+      "id": "zh-08",
+      "language": "zh",
+      "query": "M4A4 嚎叫为什么绝版？",
+      "relevant_ids": [
+        12
+      ]
+    },
+    {
+      "id": "en-08",
+      "language": "en",
+      "query": "Why was M4A4 Howl removed from drops?",
+      "relevant_ids": [
+        12
+      ]
+    },
+    {
+      "id": "zh-09",
+      "language": "zh",
+      "query": "Steam 和 BUFF 的价格为什么不同？",
+      "relevant_ids": [
+        16
+      ]
+    },
+    {
+      "id": "en-09",
+      "language": "en",
+      "query": "Why are Steam Market prices different from BUFF?",
+      "relevant_ids": [
+        16
+      ]
+    },
+    {
+      "id": "zh-10",
+      "language": "zh",
+      "query": "游戏更新和武器削弱怎样影响皮肤？",
+      "relevant_ids": [
+        19
+      ]
+    },
+    {
+      "id": "en-10",
+      "language": "en",
+      "query": "How do weapon nerfs and game patches affect skins?",
+      "relevant_ids": [
+        19
+      ]
+    },
+    {
+      "id": "zh-11",
+      "language": "zh",
+      "query": "如何判断一款皮肤流动性好不好？",
+      "relevant_ids": [
+        25
+      ]
+    },
+    {
+      "id": "en-11",
+      "language": "en",
+      "query": "How can I assess liquidity and bid-ask spreads?",
+      "relevant_ids": [
+        25
+      ]
+    },
+    {
+      "id": "zh-12",
+      "language": "zh",
+      "query": "贴纸刮掉之后能取下来再卖吗？",
+      "relevant_ids": [
+        32,
+        9
+      ]
+    },
+    {
+      "id": "en-12",
+      "language": "en",
+      "query": "Can I recover and resell a sticker after scraping it?",
+      "relevant_ids": [
+        32,
+        9
+      ]
+    }
+  ]
+}

@@ -33,11 +33,11 @@ export default function TrendChart({ data = [], avg7d, avg30d }) {
     <div>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={formatted} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
           <XAxis
             dataKey="date"
             tick={{ fill: '#6b7280', fontSize: 11 }}
-            axisLine={{ stroke: 'rgba(255,255,255,0.12)' }}
+            axisLine={{ stroke: 'var(--border-default)' }}
             tickLine={false}
             interval="preserveStartEnd"
           />

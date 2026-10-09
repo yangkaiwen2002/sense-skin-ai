@@ -40,3 +40,7 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Local test and evaluation artifacts
+.pytest_cache/
+backend/evaluation/ci-results.json

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+from time import perf_counter
 from pathlib import Path
 from typing import Optional
 
@@ -160,9 +161,10 @@ class _FaissEngine:
         try:
             q_vec = self._embedder.encode([query])
             return self._index.search(q_vec, top_k)
-        except Exception as exc:  # noqa: BLE001 - a query-time failure must not crash the API
-            logger.warning("FAISS query failed, returning no semantic hits: %s", exc)
-            return []
+        except Exception as exc:
+            # The orchestrator must exclude this engine from RRF normalization
+            # for THIS request, without changing shared state for other requests.
+            raise RuntimeError("semantic search unavailable") from exc
 
 
 class HybridRetriever:
@@ -175,7 +177,11 @@ class HybridRetriever:
         enable_faiss: bool = True,
         weights: Optional[dict[str, float]] = None,
         rrf_k: int = DEFAULT_RRF_K,
+        engines: tuple[str, ...] = ("tfidf", "bm25", "faiss"),
     ):
+        if not engines or set(engines) - {"tfidf", "bm25", "faiss"}:
+            raise ValueError("engines must contain tfidf, bm25, and/or faiss")
+        self._engines = set(engines)
         self._weights = dict(weights) if weights else FusionWeights.as_dict()
         self._rrf_k = rrf_k
 
@@ -188,7 +194,7 @@ class HybridRetriever:
 
         self._tfidf = _TfidfEngine(ids, corpus)
         self._bm25  = _Bm25Engine(ids, corpus)
-        self._faiss = _FaissEngine(ids, corpus, embedder or SentenceTransformerEmbedder(), enable_faiss)
+        self._faiss = _FaissEngine(ids, corpus, embedder or SentenceTransformerEmbedder(), enable_faiss and "faiss" in self._engines)
 
     # ── loading ────────────────────────────────────────────────────────────
     def _load(self, path: str | Path) -> None:
@@ -224,9 +230,9 @@ class HybridRetriever:
     def active_retrievers(self) -> list[str]:
         """Which of the three engines actually initialised successfully."""
         active = []
-        if self._tfidf.ready:
+        if self._tfidf.ready and "tfidf" in self._engines:
             active.append("tfidf")
-        if self._bm25.ready:
+        if self._bm25.ready and "bm25" in self._engines:
             active.append("bm25")
         if self._faiss.ready:
             active.append("faiss")
@@ -238,33 +244,43 @@ class HybridRetriever:
 
     # ── query ─────────────────────────────────────────────────────────────
     def query(self, question: str, top_k: int = 3) -> list[dict]:
+        return self.search(question, top_k)["results"]
+
+    def search(self, question: str, top_k: int = 3) -> dict:
         """Return up to `top_k` fused hits for `question`.
 
-        Empty questions or an empty knowledge base return `[]` rather than
+        Empty questions or an empty knowledge base return empty results rather than
         raising — callers that need a hard validation error (e.g. the HTTP
         API) should check the input themselves before calling this.
         """
-        if not question or not question.strip():
-            return []
-        if not self._entries_ordered:
-            return []
+        started = perf_counter()
+        meta = {"active_retrievers": [], "unavailable_retrievers": [],
+                "corpus_size": len(self._entries_ordered), "elapsed_ms": 0.0}
+        if not question or not question.strip() or not self._entries_ordered:
+            return {"results": [], "meta": meta}
 
         top_k = max(1, min(top_k, MAX_TOP_K))
         candidate_k = max(top_k * 4, 10)
 
         ranked_lists: dict[str, list[tuple[int, float]]] = {}
-        if self._tfidf.ready:
+        if self._tfidf.ready and "tfidf" in self._engines:
             ranked_lists["tfidf"] = self._tfidf.search(question, candidate_k)
-        if self._bm25.ready:
+        if self._bm25.ready and "bm25" in self._engines:
             ranked_lists["bm25"] = self._bm25.search(question, candidate_k)
         if self._faiss.ready:
-            ranked_lists["faiss"] = self._faiss.search(question, candidate_k)
+            try:
+                ranked_lists["faiss"] = self._faiss.search(question, candidate_k)
+            except RuntimeError:
+                logger.warning("FAISS query failed; using lexical retrieval for this request")
+                meta["unavailable_retrievers"].append("faiss")
+        elif "faiss" in self._engines:
+            meta["unavailable_retrievers"].append("faiss")
 
         if not ranked_lists:
-            return []
+            return {"results": [], "meta": meta}
 
         fused_hits = reciprocal_rank_fusion(ranked_lists, self._weights, k=self._rrf_k)
-        active = self.active_retrievers
+        active = list(ranked_lists)
 
         results: list[dict] = []
         for hit in fused_hits[:top_k]:
@@ -284,7 +300,8 @@ class HybridRetriever:
                 retrieval_details=detail,
             )
             results.append(result.to_dict())
-        return results
+        meta.update(active_retrievers=active, elapsed_ms=round((perf_counter() - started) * 1000, 3))
+        return {"results": results, "meta": meta}
 
     def format_context(self, entries: list[dict]) -> str:
         """Format retrieved entries into a context block for the prompt. Unchanged

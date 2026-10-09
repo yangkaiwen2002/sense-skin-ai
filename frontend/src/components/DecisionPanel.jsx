@@ -39,7 +39,7 @@ export default function DecisionPanel({ decision, loading }) {
   const ss = decision.score_summary || {}
 
   return (
-    <div className="rounded-[var(--radius-md)] border p-5 space-y-4" style={{ borderColor: meta.color + '40', background: meta.soft }}>
+    <div className="rounded-[var(--radius-md)] border p-5 space-y-4" style={{ borderColor: 'var(--border-default)', background: meta.soft }}>
 
       {/* Header — the decision, unmissable */}
       <div className="flex items-center justify-between">
@@ -53,7 +53,7 @@ export default function DecisionPanel({ decision, loading }) {
       {/* Confidence */}
       <div className="space-y-1">
         <div className="flex justify-between text-xs text-[var(--text-secondary)]">
-          <span>决策置信度</span>
+          <span>规则信号强度</span>
           <span className="font-tabular font-semibold" style={{ color: meta.color }}>{conf}%</span>
         </div>
         <div className="h-2 rounded-full bg-white/[0.07] overflow-hidden">
@@ -61,8 +61,10 @@ export default function DecisionPanel({ decision, loading }) {
         </div>
       </div>
 
+      <p className="text-[11px] leading-5 text-[var(--text-secondary)]">依据规则累积计算，未经收益回测校准，不代表上涨概率。</p>
+
       {/* Rationale — the headline "why" */}
-      <p className="text-sm text-[var(--text-primary)] leading-relaxed border-l-2 pl-3" style={{ borderColor: meta.color + '60' }}>
+      <p className="text-sm text-[var(--text-primary)] leading-relaxed border-l-2 pl-3" style={{ borderColor: meta.color }}>
         {decision.rationale}
       </p>
 
@@ -146,7 +148,7 @@ export default function DecisionPanel({ decision, loading }) {
           </div>
           <div className="space-y-2">
             {decision.event_context.map((e, i) => (
-              <div key={i} className="rounded-[var(--radius-sm)] p-2.5 space-y-0.5" style={{ background: 'rgba(0,0,0,0.2)' }}>
+              <div key={i} className="rounded-[var(--radius-sm)] p-2.5 space-y-0.5" style={{ background: 'var(--bg-surface)' }}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium text-[var(--text-primary)] truncate">{e.title}</span>
                   <span

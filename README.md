@@ -2,7 +2,7 @@
 
 **CS2 皮肤市场智能决策系统**
 
-A market intelligence and decision-support system for CS2 skin trading. The core value is not chat — it's **identifying opportunities, explaining risks, and supporting buy/hold/avoid decisions** using a structured AI pipeline grounded in real market signals.
+A market intelligence and decision-support system for CS2 skin trading. The core value is not chat — it's **identifying opportunities, explaining risks, and supporting buy/hold/avoid decisions** using a structured pipeline over stored prices, curated events, and a small knowledge base. The local demo includes seeded histories and estimated prices; it is not an independently verified live trading feed.
 
 ---
 
@@ -10,13 +10,13 @@ A market intelligence and decision-support system for CS2 skin trading. The core
 
 SenseSkin is built around one principle: **AI as a system component, not the whole product.**
 
-The system continuously scores every item across 7 independent dimensions, maps active market events to per-item relevance, runs a transparent decision engine, and surfaces the results as actionable intelligence — not just chat responses.
+The system scores available items across 7 independent dimensions, maps active market events to per-item relevance, runs a transparent decision engine, and surfaces the results as actionable intelligence — not just chat responses.
 
 ```
 Market Events  ──────────────────────┐
 Price History  → 7-Dim Scoring   → Decision Engine → BUY / WATCH / HOLD / AVOID
 Item Attributes → Event Mapper   → Evidence Chain  → Explainable Rationale
-Knowledge Base → TF-IDF Retrieval → RAG Layer      → Grounded AI Answers
+Knowledge Base → Hybrid Retrieval → RAG Layer      → Grounded AI Answers
 ```
 
 ---
@@ -26,7 +26,7 @@ Knowledge Base → TF-IDF Retrieval → RAG Layer      → Grounded AI Answers
 ### 1. Opportunity Scanner
 Scans every item with full event context and surfaces investment opportunities ranked by the decision engine. Each card shows:
 - Decision signal: **BUY / WATCH / HOLD / AVOID**
-- Confidence score (0–100%)
+- Rule signal strength (0–100%; not a calibrated probability)
 - Driving rationale from the evidence chain
 - Active market event (if one is influencing the score)
 
@@ -110,7 +110,7 @@ with `k = 60` and default weights `FAISS = 0.45, BM25 = 0.35, TF-IDF = 0.20` (`F
 
 Each result carries `fused_score` (kept as `score` too, for backward compatibility) plus a `retrieval_details` breakdown (`faiss_rank`/`faiss_score`, `bm25_rank`/`bm25_score`, `tfidf_rank`/`tfidf_score`, `active_retrievers`) so the fusion is auditable.
 
-**Known limitations**: the knowledge base is small (32 hand-written entries) and has not undergone large-scale retrieval evaluation — no Precision/Recall/MRR numbers exist for this system. Manual spot-checks show the fusion sometimes ranks a tangentially related document above the most on-topic one when a shorter document has a higher BM25 term weight. Weights (`0.45/0.35/0.20`) are a reasonable starting point, not a tuned/validated configuration.
+**Evaluation and limitations**: a reproducible 24-query bilingual labeled suite reports Hit@3, Recall@3, MRR@3 and nDCG@3 for TF-IDF, BM25 and lexical RRF. CI checks against the committed baseline; see [evaluation methodology and results](backend/evaluation/README.md). This small author-labeled set is not a held-out benchmark and does not establish production accuracy. The optional semantic mode refuses to report results when embeddings fall back. The 32-entry knowledge base is static and fusion weights remain untuned.
 
 When Claude answers a question (RAG or item chat), its system prompt is grounded with the retrieved context (RAG) or the full decision output, event context, and scoring breakdown (item chat) — not just raw price data. If hybrid retrieval finds nothing for a question, the prompt explicitly tells Claude to say so rather than imply the answer came from the knowledge base.
 
@@ -172,34 +172,72 @@ frontend/src/
 | `GET /api/market/events` | Active market events with timing labels |
 | `GET /api/market-summary` | Market mood, buy signals, avg score |
 | `POST /api/items/{id}/chat` | Streaming AI chat grounded in decision context |
+| `POST /api/rag/search` | Key-free JSON evidence search with source passages and retrieval diagnostics |
 | `POST /api/rag/query` | RAG query over knowledge base (hybrid FAISS+BM25+TF-IDF retrieval) |
 
 ---
 
+## Research workspace
+
+![Marketplace preview](docs/screenshots/marketplace.jpg)
+
+[Mobile screenshot](docs/screenshots/mobile.jpg)
+
+
+- A responsive marketplace with light surfaces, Steam-hosted item artwork, weapon/exterior filters, price sorting, accessible navigation, and consistent detail pages.
+- Persistent browser-local watchlists: add/remove items from detail pages and revisit saved items with refreshed backend quotes.
+- **Local research briefs** combine loaded platform prices, rule scores, positive/negative evidence and follow-up checks. Export a plain-text brief without an external AI call. Missing data stays explicitly missing.
+- Ask Sense exposes expandable source passages before generated text. **Find sources** works without an API key; **Synthesize** falls back to source reading when no key is configured.
+- A failed generation keeps its evidence visible. Request cancellation and SSE parsing handle fragmented UTF-8, premature disconnects, and stale request completion.
+- Dashboard cards no longer present an unrelated approximation as the seven-dimensional backend score. Rule signal strength is explicitly not a probability of returns.
+- Routes are lazy-loaded so detail-page charts do not ship with the initial market page.
+
 ## Running Locally
 
 ```bash
-# Backend
+# Lightweight backend: no model weights or API key required
 cd backend
-pip install -r requirements.txt
-cp .env.example .env          # add CLAUDE_API_KEY
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-core.txt
+cp .env.example .env
 uvicorn app.main:app --reload --port 8000
-
-# Seed the database
-curl -X POST http://localhost:8000/api/seed
-
-# Frontend
-cd frontend
-npm install
-npm run dev
-
-# Backend tests (no network required; FAISS-dependent cases use a fake
-# embedder — see backend/tests/conftest.py)
-cd backend
-pytest tests/
 ```
 
+In another terminal:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173`. Use **初始化示例数据** for the local market demo, or search the knowledge base immediately with **查找来源**. The seed data is synthetic/illustrative, not a live performance record. Steam refresh may estimate other platforms using fixed multipliers.
+
+To enable generated answers, set `CLAUDE_API_KEY` in the backend `.env`. To enable actual semantic retrieval, install `faiss-cpu sentence-transformers` and set `RAG_ENABLE_FAISS=true`; first use can download the embedding model. Knowledge entries contain unverified historical numerical claims and must not be treated as current prices.
+
+```bash
+# Standalone evidence API; no generation cost
+curl -X POST http://localhost:8000/api/rag/search \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"如何评估皮肤流动性？","top_k":3}'
+
+# Backend tests and retrieval regression gate, from backend/
+pip install -r requirements-dev.txt
+python -m pytest tests -q
+python -m app.rag.evaluation --output evaluation/ci-results.json --baseline evaluation/results.json
+
+# Frontend stream tests and production build, from frontend/
+npm test
+npm run build
+```
+
+GitHub Actions runs both test suites, the retrieval regression gate, and the production build on pushes and pull requests. It uploads the per-query retrieval report, including misses. Live Claude and real-embedding integration are optional and are not claimed by the offline CI suite.
+
+
 ---
+
+Artwork sources and limitations: [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## Tech Stack
 

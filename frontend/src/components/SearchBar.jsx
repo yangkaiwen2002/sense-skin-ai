@@ -36,7 +36,7 @@ export default function SearchBar({ placeholder = '搜索饰品，例如：AK-47
     const data = await searchItems(q)
     setResults(data || [])
     setLoading(false)
-    setOpen(true)
+    setOpen(document.activeElement === inputRef.current)
     setActiveIdx(-1)
   }, [])
 
@@ -89,6 +89,7 @@ export default function SearchBar({ placeholder = '搜索饰品，例如：AK-47
           onChange={e => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
           onFocus={() => doSearch(query)}
+          aria-label="搜索饰品"
           placeholder={placeholder}
           className={`w-full min-h-[44px] bg-white/[0.05] border text-[var(--text-primary)] text-sm outline-none
             pl-12 pr-4 py-3 transition-colors duration-150
@@ -102,7 +103,7 @@ export default function SearchBar({ placeholder = '搜索饰品，例如：AK-47
           className="absolute top-full left-0 right-0 rounded-b-[var(--radius-md)] border border-t-0 overflow-hidden z-[200]"
           style={{ background: 'var(--bg-surface-raised)', borderColor: 'var(--accent-border)', boxShadow: 'var(--shadow-lg)' }}
         >
-          <div className="px-3.5 py-1.5 text-[10px] uppercase tracking-wide text-[var(--text-dim)] border-b border-white/[0.04]" style={{ background: 'rgba(0,0,0,0.2)' }}>
+          <div className="px-3.5 py-1.5 text-[10px] uppercase tracking-wide text-[var(--text-dim)] border-b border-white/[0.04]" style={{ background: 'var(--bg-surface-raised)' }}>
             {query ? `"${query}" 的搜索结果` : '热门饰品'}
           </div>
 

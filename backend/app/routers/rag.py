@@ -24,13 +24,14 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.limiter import limiter
 from app.rag.retriever import MAX_TOP_K, get_retriever
+from app.rag.models import KnowledgeBaseError
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 logger = logging.getLogger(__name__)
 
 
 class RAGRequest(BaseModel):
-    question: str
+    question: str = Field(max_length=2000)
     top_k: int = Field(default=3, ge=1, le=MAX_TOP_K)
 
 
@@ -44,6 +45,25 @@ _SYSTEM = """你是 SkinSense AI，一个专业的 CS2（反恐精英2）饰品�
 - 用中文回答，除非用户用英文提问
 - 可以引用知识库中的具体数据支撑你的观点
 - 不要向用户复述检索分数、排名等内部实现细节，那些不是分析内容"""
+
+_SYSTEM += "\n- 引用参考内容时标注 [知识 1] 等对应编号。知识库是静态参考资料，价格、费率和历史收益描述不代表当前行情或经核验的事实；不要把它们表述为最新报价。"
+
+
+def _search(req: RAGRequest):
+    if not req.question.strip():
+        raise HTTPException(status_code=400, detail="问题不能为空")
+    try:
+        return get_retriever().search(req.question, top_k=req.top_k)
+    except KnowledgeBaseError:
+        logger.exception("Knowledge base unavailable")
+        raise HTTPException(status_code=503, detail="知识库暂不可用，请稍后重试") from None
+
+
+@router.post("/search")
+@limiter.limit("60/minute")
+def rag_search(request: Request, req: RAGRequest):
+    """Inspect knowledge and retrieval evidence without an LLM API key."""
+    return _search(req)
 
 
 def _build_prompt(question: str, context: str, has_context: bool) -> str:
@@ -69,14 +89,12 @@ def rag_query(request: Request, req: RAGRequest):
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="问题不能为空")
 
-    api_key = settings.CLAUDE_API_KEY
-    if not api_key:
-        raise HTTPException(status_code=503, detail="Claude API key not configured")
-
+    search = _search(req)
+    retrieved = search["results"]
     retriever = get_retriever()
-    retrieved = retriever.query(req.question, top_k=req.top_k)
     context = retriever.format_context(retrieved)
-    active_retrievers = retriever.active_retrievers
+    active_retrievers = search["meta"]["active_retrievers"]
+    api_key = settings.CLAUDE_API_KEY
 
     logger.info(
         "rag_query active_retrievers=%s results=%d faiss_disabled_reason=%s",
@@ -91,6 +109,7 @@ def rag_query(request: Request, req: RAGRequest):
             "id": e["id"],
             "title": e["title"],
             "category": e["category"],
+            "content": e["content"],
             "fused_score": e.get("fused_score", e.get("score")),
             "retrieval_details": e.get("retrieval_details"),
         }
@@ -101,11 +120,16 @@ def rag_query(request: Request, req: RAGRequest):
     def generate():
         # First event: emit sources (+ which retrievers were active) so the
         # frontend can display them immediately.
-        yield f"data: {json.dumps({'type': 'sources', 'sources': sources, 'meta': {'active_retrievers': active_retrievers}})}\n\n"
+        meta = {**search["meta"], "answer_mode": "generated" if api_key else "retrieval_only"}
+        yield f"data: {json.dumps({'type': 'sources', 'sources': sources, 'meta': meta})}\n\n"
+
+        if not api_key:
+            yield f"data: {json.dumps({'type': 'notice', 'text': '当前为知识检索模式，可展开阅读原文；配置 Claude API 后可生成综合回答。'})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
 
         try:
-            client = anthropic.Anthropic(api_key=api_key)
-            with client.messages.stream(
+            with anthropic.Anthropic(api_key=api_key, timeout=45.0, max_retries=1) as client, client.messages.stream(
                 model="claude-opus-4-6",
                 max_tokens=1024,
                 system=_SYSTEM,
@@ -113,8 +137,9 @@ def rag_query(request: Request, req: RAGRequest):
             ) as stream:
                 for text in stream.text_stream:
                     yield f"data: {json.dumps({'type': 'text', 'text': text})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+        except Exception:
+            logger.exception("RAG generation failed")
+            yield f"data: {json.dumps({'type': 'error', 'error': 'AI 回答暂时不可用，已保留检索来源，请稍后重试。'})}\n\n"
 
         yield "data: [DONE]\n\n"
 

@@ -1,0 +1,1796 @@
+{
+  "dataset_version": "1.0",
+  "dataset_sha256": "8e9c0503048309cb85fd1f93384588989238644c4870afccded8cee6fb9568d2",
+  "corpus_sha256": "a5d8bd97ba3f2531201e4635e8fc21f4a4ce9cbc96b0f1edee62d6d37e81a2ba",
+  "top_k": 3,
+  "corpus_size": 32,
+  "limitations": "24 author-labeled smoke queries over 32 static entries; not a held-out benchmark, human relevance study, or verification of market facts. Labels cover selected relevant entries, not exhaustive relevance. English queries deliberately test cross-language limitations. Latency excludes model loading and is machine-dependent. No weights tuned on these queries.",
+  "modes": {
+    "tfidf": {
+      "summary": {
+        "count": 24,
+        "hit_rate": 0.9167,
+        "recall": 0.8125,
+        "mrr": 0.8125,
+        "ndcg": 0.7629
+      },
+      "by_language": {
+        "en": {
+          "count": 12,
+          "hit_rate": 0.8333,
+          "recall": 0.7083,
+          "mrr": 0.6806,
+          "ndcg": 0.632
+        },
+        "zh": {
+          "count": 12,
+          "hit_rate": 1.0,
+          "recall": 0.9167,
+          "mrr": 0.9444,
+          "ndcg": 0.8939
+        }
+      },
+      "latency_ms": {
+        "p50": 0.316,
+        "p95": 0.46
+      },
+      "cases": [
+        {
+          "id": "zh-01",
+          "language": "zh",
+          "query": "皮肤磨损等级 FN 和 FT 有什么区别？",
+          "relevant_ids": [
+            2
+          ],
+          "retrieved_ids": [
+            2,
+            27,
+            14
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.566,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-01",
+          "language": "en",
+          "query": "What do Factory New and Field-Tested mean?",
+          "relevant_ids": [
+            2
+          ],
+          "retrieved_ids": [
+            2,
+            1,
+            18
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.393,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-02",
+          "language": "zh",
+          "query": "StatTrak 为什么比普通版贵？",
+          "relevant_ids": [
+            3
+          ],
+          "retrieved_ids": [
+            3,
+            11,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.33,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-02",
+          "language": "en",
+          "query": "Why does StatTrak cost more than a normal skin?",
+          "relevant_ids": [
+            3
+          ],
+          "retrieved_ids": [
+            3,
+            11,
+            2
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.332,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-03",
+          "language": "zh",
+          "query": "刀用一个月是租还是买更省钱？",
+          "relevant_ids": [
+            4
+          ],
+          "retrieved_ids": [
+            4,
+            27,
+            22
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.296,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-03",
+          "language": "en",
+          "query": "How should I compare renting versus buying a knife?",
+          "relevant_ids": [
+            4
+          ],
+          "retrieved_ids": [
+            12,
+            13,
+            25
+          ],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.316,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-04",
+          "language": "zh",
+          "query": "悠悠有品租赁要交多少押金？",
+          "relevant_ids": [
+            5,
+            17
+          ],
+          "retrieved_ids": [
+            5,
+            17,
+            6
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.294,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-04",
+          "language": "en",
+          "query": "What deposit is required to rent on YouPin?",
+          "relevant_ids": [
+            5,
+            17
+          ],
+          "retrieved_ids": [
+            17,
+            23,
+            2
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.313,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-05",
+          "language": "zh",
+          "query": "Major 赛事怎样影响贴纸市场？",
+          "relevant_ids": [
+            7,
+            9
+          ],
+          "retrieved_ids": [
+            7,
+            8,
+            22
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.297,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-05",
+          "language": "en",
+          "query": "How do Major tournaments affect sticker demand?",
+          "relevant_ids": [
+            7,
+            9
+          ],
+          "retrieved_ids": [
+            7,
+            8,
+            9
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.9197207891481876
+          },
+          "latency_ms": 0.333,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-06",
+          "language": "zh",
+          "query": "龙狙为何稀缺且价格波动大？",
+          "relevant_ids": [
+            10
+          ],
+          "retrieved_ids": [
+            18,
+            24,
+            10
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.5
+          },
+          "latency_ms": 0.298,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-06",
+          "language": "en",
+          "query": "Why is AWP Dragon Lore scarce and volatile?",
+          "relevant_ids": [
+            10
+          ],
+          "retrieved_ids": [
+            24,
+            10,
+            2
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.5,
+            "ndcg": 0.6309297535714575
+          },
+          "latency_ms": 0.307,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-07",
+          "language": "zh",
+          "query": "AK-47 红线是否容易卖出？",
+          "relevant_ids": [
+            11,
+            25
+          ],
+          "retrieved_ids": [
+            11,
+            3,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.294,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-07",
+          "language": "en",
+          "query": "Is AK-47 Redline easy to resell?",
+          "relevant_ids": [
+            11,
+            25
+          ],
+          "retrieved_ids": [
+            11,
+            23,
+            3
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.472,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-08",
+          "language": "zh",
+          "query": "M4A4 嚎叫为什么绝版？",
+          "relevant_ids": [
+            12
+          ],
+          "retrieved_ids": [
+            12,
+            1,
+            31
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.339,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-08",
+          "language": "en",
+          "query": "Why was M4A4 Howl removed from drops?",
+          "relevant_ids": [
+            12
+          ],
+          "retrieved_ids": [
+            12,
+            31,
+            1
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.333,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-09",
+          "language": "zh",
+          "query": "Steam 和 BUFF 的价格为什么不同？",
+          "relevant_ids": [
+            16
+          ],
+          "retrieved_ids": [
+            16,
+            22,
+            21
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.327,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-09",
+          "language": "en",
+          "query": "Why are Steam Market prices different from BUFF?",
+          "relevant_ids": [
+            16
+          ],
+          "retrieved_ids": [
+            16,
+            22,
+            8
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.32,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-10",
+          "language": "zh",
+          "query": "游戏更新和武器削弱怎样影响皮肤？",
+          "relevant_ids": [
+            19
+          ],
+          "retrieved_ids": [
+            19,
+            18,
+            28
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.306,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-10",
+          "language": "en",
+          "query": "How do weapon nerfs and game patches affect skins?",
+          "relevant_ids": [
+            19
+          ],
+          "retrieved_ids": [
+            12,
+            2,
+            8
+          ],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.316,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-11",
+          "language": "zh",
+          "query": "如何判断一款皮肤流动性好不好？",
+          "relevant_ids": [
+            25
+          ],
+          "retrieved_ids": [
+            25,
+            27,
+            31
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.301,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-11",
+          "language": "en",
+          "query": "How can I assess liquidity and bid-ask spreads?",
+          "relevant_ids": [
+            25
+          ],
+          "retrieved_ids": [
+            12,
+            1,
+            25
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.5
+          },
+          "latency_ms": 0.309,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "zh-12",
+          "language": "zh",
+          "query": "贴纸刮掉之后能取下来再卖吗？",
+          "relevant_ids": [
+            32,
+            9
+          ],
+          "retrieved_ids": [
+            9,
+            32,
+            7
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.289,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        },
+        {
+          "id": "en-12",
+          "language": "en",
+          "query": "Can I recover and resell a sticker after scraping it?",
+          "relevant_ids": [
+            32,
+            9
+          ],
+          "retrieved_ids": [
+            1,
+            28,
+            32
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.3065735963827292
+          },
+          "latency_ms": 0.317,
+          "active_retrievers": [
+            "tfidf"
+          ]
+        }
+      ]
+    },
+    "bm25": {
+      "summary": {
+        "count": 24,
+        "hit_rate": 0.8333,
+        "recall": 0.7292,
+        "mrr": 0.7361,
+        "ndcg": 0.6829
+      },
+      "by_language": {
+        "en": {
+          "count": 12,
+          "hit_rate": 0.6667,
+          "recall": 0.5417,
+          "mrr": 0.5833,
+          "ndcg": 0.5203
+        },
+        "zh": {
+          "count": 12,
+          "hit_rate": 1.0,
+          "recall": 0.9167,
+          "mrr": 0.8889,
+          "ndcg": 0.8455
+        }
+      },
+      "latency_ms": {
+        "p50": 0.048,
+        "p95": 0.066
+      },
+      "cases": [
+        {
+          "id": "zh-01",
+          "language": "zh",
+          "query": "皮肤磨损等级 FN 和 FT 有什么区别？",
+          "relevant_ids": [
+            2
+          ],
+          "retrieved_ids": [
+            2,
+            14,
+            27
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.111,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-01",
+          "language": "en",
+          "query": "What do Factory New and Field-Tested mean?",
+          "relevant_ids": [
+            2
+          ],
+          "retrieved_ids": [
+            2
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.048,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-02",
+          "language": "zh",
+          "query": "StatTrak 为什么比普通版贵？",
+          "relevant_ids": [
+            3
+          ],
+          "retrieved_ids": [
+            3,
+            24,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.048,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-02",
+          "language": "en",
+          "query": "Why does StatTrak cost more than a normal skin?",
+          "relevant_ids": [
+            3
+          ],
+          "retrieved_ids": [
+            3,
+            11,
+            21
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.052,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-03",
+          "language": "zh",
+          "query": "刀用一个月是租还是买更省钱？",
+          "relevant_ids": [
+            4
+          ],
+          "retrieved_ids": [
+            4,
+            22
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.06,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-03",
+          "language": "en",
+          "query": "How should I compare renting versus buying a knife?",
+          "relevant_ids": [
+            4
+          ],
+          "retrieved_ids": [
+            13
+          ],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.045,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-04",
+          "language": "zh",
+          "query": "悠悠有品租赁要交多少押金？",
+          "relevant_ids": [
+            5,
+            17
+          ],
+          "retrieved_ids": [
+            5,
+            6,
+            17
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.9197207891481876
+          },
+          "latency_ms": 0.054,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-04",
+          "language": "en",
+          "query": "What deposit is required to rent on YouPin?",
+          "relevant_ids": [
+            5,
+            17
+          ],
+          "retrieved_ids": [
+            17,
+            6,
+            4
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.044,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-05",
+          "language": "zh",
+          "query": "Major 赛事怎样影响贴纸市场？",
+          "relevant_ids": [
+            7,
+            9
+          ],
+          "retrieved_ids": [
+            7,
+            8,
+            24
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.057,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-05",
+          "language": "en",
+          "query": "How do Major tournaments affect sticker demand?",
+          "relevant_ids": [
+            7,
+            9
+          ],
+          "retrieved_ids": [
+            28,
+            7,
+            8
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 0.5,
+            "ndcg": 0.38685280723454163
+          },
+          "latency_ms": 0.04,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-06",
+          "language": "zh",
+          "query": "龙狙为何稀缺且价格波动大？",
+          "relevant_ids": [
+            10
+          ],
+          "retrieved_ids": [
+            18,
+            24,
+            10
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.5
+          },
+          "latency_ms": 0.058,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-06",
+          "language": "en",
+          "query": "Why is AWP Dragon Lore scarce and volatile?",
+          "relevant_ids": [
+            10
+          ],
+          "retrieved_ids": [
+            24,
+            10,
+            2
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.5,
+            "ndcg": 0.6309297535714575
+          },
+          "latency_ms": 0.041,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-07",
+          "language": "zh",
+          "query": "AK-47 红线是否容易卖出？",
+          "relevant_ids": [
+            11,
+            25
+          ],
+          "retrieved_ids": [
+            11,
+            3,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.047,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-07",
+          "language": "en",
+          "query": "Is AK-47 Redline easy to resell?",
+          "relevant_ids": [
+            11,
+            25
+          ],
+          "retrieved_ids": [
+            11,
+            3,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.039,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-08",
+          "language": "zh",
+          "query": "M4A4 嚎叫为什么绝版？",
+          "relevant_ids": [
+            12
+          ],
+          "retrieved_ids": [
+            12,
+            1,
+            24
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.038,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-08",
+          "language": "en",
+          "query": "Why was M4A4 Howl removed from drops?",
+          "relevant_ids": [
+            12
+          ],
+          "retrieved_ids": [
+            12,
+            31,
+            1
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.038,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-09",
+          "language": "zh",
+          "query": "Steam 和 BUFF 的价格为什么不同？",
+          "relevant_ids": [
+            16
+          ],
+          "retrieved_ids": [
+            14,
+            24,
+            16
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.5
+          },
+          "latency_ms": 0.056,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-09",
+          "language": "en",
+          "query": "Why are Steam Market prices different from BUFF?",
+          "relevant_ids": [
+            16
+          ],
+          "retrieved_ids": [
+            16,
+            22,
+            25
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.044,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-10",
+          "language": "zh",
+          "query": "游戏更新和武器削弱怎样影响皮肤？",
+          "relevant_ids": [
+            19
+          ],
+          "retrieved_ids": [
+            19,
+            18,
+            28
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.066,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-10",
+          "language": "en",
+          "query": "How do weapon nerfs and game patches affect skins?",
+          "relevant_ids": [
+            19
+          ],
+          "retrieved_ids": [
+            11,
+            10,
+            12
+          ],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.048,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-11",
+          "language": "zh",
+          "query": "如何判断一款皮肤流动性好不好？",
+          "relevant_ids": [
+            25
+          ],
+          "retrieved_ids": [
+            25,
+            27,
+            14
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.065,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-11",
+          "language": "en",
+          "query": "How can I assess liquidity and bid-ask spreads?",
+          "relevant_ids": [
+            25
+          ],
+          "retrieved_ids": [],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.041,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-12",
+          "language": "zh",
+          "query": "贴纸刮掉之后能取下来再卖吗？",
+          "relevant_ids": [
+            32,
+            9
+          ],
+          "retrieved_ids": [
+            9,
+            32,
+            7
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.059,
+          "active_retrievers": [
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-12",
+          "language": "en",
+          "query": "Can I recover and resell a sticker after scraping it?",
+          "relevant_ids": [
+            32,
+            9
+          ],
+          "retrieved_ids": [
+            28
+          ],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.048,
+          "active_retrievers": [
+            "bm25"
+          ]
+        }
+      ]
+    },
+    "lexical_rrf": {
+      "summary": {
+        "count": 24,
+        "hit_rate": 0.9167,
+        "recall": 0.7917,
+        "mrr": 0.8125,
+        "ndcg": 0.7468
+      },
+      "by_language": {
+        "en": {
+          "count": 12,
+          "hit_rate": 0.8333,
+          "recall": 0.6667,
+          "mrr": 0.6806,
+          "ndcg": 0.6064
+        },
+        "zh": {
+          "count": 12,
+          "hit_rate": 1.0,
+          "recall": 0.9167,
+          "mrr": 0.9444,
+          "ndcg": 0.8872
+        }
+      },
+      "latency_ms": {
+        "p50": 0.361,
+        "p95": 0.395
+      },
+      "cases": [
+        {
+          "id": "zh-01",
+          "language": "zh",
+          "query": "皮肤磨损等级 FN 和 FT 有什么区别？",
+          "relevant_ids": [
+            2
+          ],
+          "retrieved_ids": [
+            2,
+            14,
+            27
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.471,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-01",
+          "language": "en",
+          "query": "What do Factory New and Field-Tested mean?",
+          "relevant_ids": [
+            2
+          ],
+          "retrieved_ids": [
+            2,
+            1,
+            18
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.398,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-02",
+          "language": "zh",
+          "query": "StatTrak 为什么比普通版贵？",
+          "relevant_ids": [
+            3
+          ],
+          "retrieved_ids": [
+            3,
+            24,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.358,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-02",
+          "language": "en",
+          "query": "Why does StatTrak cost more than a normal skin?",
+          "relevant_ids": [
+            3
+          ],
+          "retrieved_ids": [
+            3,
+            11,
+            21
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.38,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-03",
+          "language": "zh",
+          "query": "刀用一个月是租还是买更省钱？",
+          "relevant_ids": [
+            4
+          ],
+          "retrieved_ids": [
+            4,
+            22,
+            27
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.353,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-03",
+          "language": "en",
+          "query": "How should I compare renting versus buying a knife?",
+          "relevant_ids": [
+            4
+          ],
+          "retrieved_ids": [
+            13,
+            12,
+            25
+          ],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.364,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-04",
+          "language": "zh",
+          "query": "悠悠有品租赁要交多少押金？",
+          "relevant_ids": [
+            5,
+            17
+          ],
+          "retrieved_ids": [
+            5,
+            6,
+            17
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.9197207891481876
+          },
+          "latency_ms": 0.355,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-04",
+          "language": "en",
+          "query": "What deposit is required to rent on YouPin?",
+          "relevant_ids": [
+            5,
+            17
+          ],
+          "retrieved_ids": [
+            17,
+            6,
+            4
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.352,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-05",
+          "language": "zh",
+          "query": "Major 赛事怎样影响贴纸市场？",
+          "relevant_ids": [
+            7,
+            9
+          ],
+          "retrieved_ids": [
+            7,
+            8,
+            18
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.356,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-05",
+          "language": "en",
+          "query": "How do Major tournaments affect sticker demand?",
+          "relevant_ids": [
+            7,
+            9
+          ],
+          "retrieved_ids": [
+            7,
+            28,
+            8
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.359,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-06",
+          "language": "zh",
+          "query": "龙狙为何稀缺且价格波动大？",
+          "relevant_ids": [
+            10
+          ],
+          "retrieved_ids": [
+            18,
+            24,
+            10
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.5
+          },
+          "latency_ms": 0.365,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-06",
+          "language": "en",
+          "query": "Why is AWP Dragon Lore scarce and volatile?",
+          "relevant_ids": [
+            10
+          ],
+          "retrieved_ids": [
+            24,
+            10,
+            2
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.5,
+            "ndcg": 0.6309297535714575
+          },
+          "latency_ms": 0.36,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-07",
+          "language": "zh",
+          "query": "AK-47 红线是否容易卖出？",
+          "relevant_ids": [
+            11,
+            25
+          ],
+          "retrieved_ids": [
+            11,
+            3,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.355,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-07",
+          "language": "en",
+          "query": "Is AK-47 Redline easy to resell?",
+          "relevant_ids": [
+            11,
+            25
+          ],
+          "retrieved_ids": [
+            11,
+            3,
+            23
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 1.0,
+            "ndcg": 0.6131471927654584
+          },
+          "latency_ms": 0.362,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-08",
+          "language": "zh",
+          "query": "M4A4 嚎叫为什么绝版？",
+          "relevant_ids": [
+            12
+          ],
+          "retrieved_ids": [
+            12,
+            1,
+            24
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.346,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-08",
+          "language": "en",
+          "query": "Why was M4A4 Howl removed from drops?",
+          "relevant_ids": [
+            12
+          ],
+          "retrieved_ids": [
+            12,
+            31,
+            1
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.359,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-09",
+          "language": "zh",
+          "query": "Steam 和 BUFF 的价格为什么不同？",
+          "relevant_ids": [
+            16
+          ],
+          "retrieved_ids": [
+            16,
+            22,
+            14
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.36,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-09",
+          "language": "en",
+          "query": "Why are Steam Market prices different from BUFF?",
+          "relevant_ids": [
+            16
+          ],
+          "retrieved_ids": [
+            16,
+            22,
+            25
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.358,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-10",
+          "language": "zh",
+          "query": "游戏更新和武器削弱怎样影响皮肤？",
+          "relevant_ids": [
+            19
+          ],
+          "retrieved_ids": [
+            19,
+            18,
+            28
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.37,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-10",
+          "language": "en",
+          "query": "How do weapon nerfs and game patches affect skins?",
+          "relevant_ids": [
+            19
+          ],
+          "retrieved_ids": [
+            12,
+            10,
+            11
+          ],
+          "metrics": {
+            "hit_rate": 0.0,
+            "recall": 0.0,
+            "mrr": 0.0,
+            "ndcg": 0.0
+          },
+          "latency_ms": 0.369,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-11",
+          "language": "zh",
+          "query": "如何判断一款皮肤流动性好不好？",
+          "relevant_ids": [
+            25
+          ],
+          "retrieved_ids": [
+            25,
+            27,
+            31
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.367,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-11",
+          "language": "en",
+          "query": "How can I assess liquidity and bid-ask spreads?",
+          "relevant_ids": [
+            25
+          ],
+          "retrieved_ids": [
+            12,
+            1,
+            25
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.5
+          },
+          "latency_ms": 0.363,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "zh-12",
+          "language": "zh",
+          "query": "贴纸刮掉之后能取下来再卖吗？",
+          "relevant_ids": [
+            32,
+            9
+          ],
+          "retrieved_ids": [
+            9,
+            32,
+            7
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "latency_ms": 0.362,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        },
+        {
+          "id": "en-12",
+          "language": "en",
+          "query": "Can I recover and resell a sticker after scraping it?",
+          "relevant_ids": [
+            32,
+            9
+          ],
+          "retrieved_ids": [
+            28,
+            1,
+            32
+          ],
+          "metrics": {
+            "hit_rate": 1.0,
+            "recall": 0.5,
+            "mrr": 0.3333333333333333,
+            "ndcg": 0.3065735963827292
+          },
+          "latency_ms": 0.365,
+          "active_retrievers": [
+            "tfidf",
+            "bm25"
+          ]
+        }
+      ]
+    }
+  }
+}

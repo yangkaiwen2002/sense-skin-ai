@@ -1,24 +1,8 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
-sqlalchemy==2.0.36
-pydantic==2.9.2
-pydantic-settings==2.6.0
-pandas==2.2.3
-numpy==2.1.3
-anthropic==0.40.0
-python-dotenv==1.0.1
-python-multipart==0.0.12
-requests==2.32.3
-streamlit==1.41.1
-plotly==5.24.1
-scikit-learn>=1.5.0
-slowapi==0.1.9
-apscheduler==3.10.4
-
-# Hybrid RAG retrieval (FAISS + BM25 + TF-IDF)
-rank-bm25>=0.2.2
+-r requirements-core.txt
+# Optional semantic retrieval (lexical search works without these).
 faiss-cpu>=1.8.0
 sentence-transformers>=3.0.0
-
-# Test suite
+# Legacy Streamlit interface.
+streamlit==1.41.1
+plotly==5.24.1
 pytest>=8.0.0

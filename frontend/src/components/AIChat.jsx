@@ -112,7 +112,7 @@ export default function AIChat({ itemId, itemName }) {
         {showQuickQuestions && (
           <div>
             <p className="text-[11px] text-[var(--text-dim)] text-center mb-3 leading-relaxed">
-              基于实时市场数据，向 AI 提问关于这个饰品的问题
+              基于已载入的市场数据提问；无 AI 服务时可使用左侧研究简报。
             </p>
             <div className="flex flex-col gap-1.5">
               {QUICK_QUESTIONS.map(q => (
@@ -120,7 +120,7 @@ export default function AIChat({ itemId, itemName }) {
                   key={q}
                   onClick={() => send(q)}
                   className="text-left px-3 py-2 rounded-[var(--radius-sm)] text-xs transition-colors duration-150
-                    bg-[var(--accent-soft)] border border-[var(--accent-border)] text-white/60 hover:text-white/85 hover:bg-[var(--accent-soft)]"
+                    bg-[var(--accent-soft)] border border-[var(--accent-border)] text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                 >
                   {q}
                 </button>

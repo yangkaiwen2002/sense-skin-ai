@@ -1,0 +1,4 @@
+-r requirements-core.txt
+pytest>=8.0.0
+# FAISS tests inject vectors; no model weights or API keys are needed.
+faiss-cpu>=1.8.0

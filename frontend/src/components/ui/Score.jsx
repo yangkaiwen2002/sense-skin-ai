@@ -74,7 +74,7 @@ export function ScoreRing({ score, size = 100, variant = 'ring', showLabel = tru
         <svg width={size} height={size} className="block -rotate-90">
           <circle
             cx={size / 2} cy={size / 2} r={r} fill="none"
-            stroke={variant === 'badge' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.07)'}
+            stroke={variant === 'badge' ? 'rgba(0,0,0,0.55)' : 'var(--border-default)'}
             strokeWidth={stroke}
           />
           <circle
@@ -92,7 +92,7 @@ export function ScoreRing({ score, size = 100, variant = 'ring', showLabel = tru
             {score}
           </span>
           {variant !== 'badge' && size >= 70 && (
-            <span className="text-[9px] text-white/30 tracking-widest mt-1">AI SCORE</span>
+            <span className="text-[9px] text-[var(--text-dim)] tracking-widest mt-1">规则评分</span>
           )}
         </div>
       </div>
