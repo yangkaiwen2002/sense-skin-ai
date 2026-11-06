@@ -14,6 +14,7 @@ The event_signal dimension is fed from event_mapper.EventMapping.
 When no mapping is provided, it defaults to 50 (neutral).
 """
 
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
@@ -22,9 +23,7 @@ from sqlalchemy.orm import Session
 from app.models.item import Item
 from app.models.platform import Platform
 from app.models.price_snapshot import PriceSnapshot
-from app.utils.metrics import (
-    compute_avg, compute_return, compute_volatility, compute_liquidity_score,
-)
+from app.services.market_data import summarize_snapshots, latest_quotes
 
 if TYPE_CHECKING:
     from app.services.event_mapper import EventMapping
@@ -184,47 +183,28 @@ def score_item(
     if not item:
         return None
 
-    buff_plat = db.query(Platform).filter(Platform.name == "BUFF").first()
-    if buff_plat:
-        snaps = (
-            db.query(PriceSnapshot)
-            .filter(PriceSnapshot.item_id == item_id, PriceSnapshot.platform_id == buff_plat.id)
-            .order_by(PriceSnapshot.snapshot_time.asc())
-            .all()
-        )
-    else:
-        snaps = (
-            db.query(PriceSnapshot)
-            .filter(PriceSnapshot.item_id == item_id)
-            .order_by(PriceSnapshot.snapshot_time.asc())
-            .all()
-        )
-
-    if not snaps:
+    quotes = [s for s in latest_quotes(db, item_id) if datetime.utcnow() - s.snapshot_time <= timedelta(hours=24)]
+    if not quotes:
         return None
-
-    prices = [s.listing_price for s in snaps if s.listing_price is not None]
-    if not prices:
+    # Use one platform, preferring BUFF only when it has a valid quote.
+    reference = min(quotes, key=lambda s: (s.platform.name != "BUFF", s.platform_id))
+    snaps = db.query(PriceSnapshot).filter(
+        PriceSnapshot.item_id == item_id,
+        PriceSnapshot.platform_id == reference.platform_id,
+    ).all()
+    metrics = summarize_snapshots(snaps)
+    if not metrics or metrics["current_price"] is None or metrics["is_stale"]:
         return None
-
-    latest = snaps[-1]
-    cur    = latest.listing_price or 0.0
-    avg30  = compute_avg(prices, 30) or cur
-    ret7d  = compute_return(prices, 7) or 0.0
-    vol    = compute_volatility(prices[-30:])
-
-    volumes = [s.volume_24h for s in snaps[-7:] if s.volume_24h is not None]
-    depths  = [s.liquidity_depth for s in snaps[-7:] if s.liquidity_depth is not None]
-    raw_liq = compute_liquidity_score(
-        sum(volumes) / len(volumes) if volumes else None,
-        sum(depths)  / len(depths)  if depths  else None,
-        latest.spread, cur,
-    )
+    cur = metrics["current_price"]
+    avg30 = metrics["avg_30d"] or cur
+    ret7d = metrics["return_7d"] if metrics["return_7d"] is not None else 0.0
+    vol = metrics["volatility_7d"]
+    raw_liq = metrics["liquidity_score"]
 
     # ── Sub-scores ─────────────────────────────────────────────────────────────
     rarity_score    = RARITY_SCORES.get(item.rarity or "", 40)
     exterior_score  = EXTERIOR_SCORES.get(item.exterior or "", 50)
-    liquidity_score = _clamp(raw_liq or 40)
+    liquidity_score = _clamp(raw_liq if raw_liq is not None else 40)
     trend_score     = _clamp(50 + ret7d * 800)
 
     if avg30 > 0:
@@ -270,8 +250,13 @@ def score_item(
 
     reasons, risks = _build_reasons_and_risks(item, ss, ret7d, cur, avg30, vol, event_map)
 
+    if metrics["return_7d"] is None:
+        risks.append("缺少完整7日端点，趋势暂按中性处理")
+    if raw_liq is None:
+        risks.append("缺少成交量和深度，流动性使用保守默认值")
+
     # Confidence
-    data_coverage = min(len(prices) / 30, 1.0)
+    data_coverage = min(metrics["observed_days_30d"] / 30, 1.0)
     liq_factor    = min(liquidity_score / 100, 1.0)
     event_factor  = 0.05 if event_map and event_map.relevant_events else 0.0
     confidence    = round(0.38 + 0.32 * data_coverage + 0.20 * liq_factor + event_factor, 2)

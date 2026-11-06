@@ -325,6 +325,7 @@ def seed(db: Session) -> dict:
                     platform_id=platform.id,
                     snapshot_time=snap_time,
                     listing_price=listing,
+                    source="seed", price_kind="demo",
                     buy_order_price=buy_order,
                     avg_price_24h=round((listing + buy_order) / 2, 2),
                     volume_24h=volume,

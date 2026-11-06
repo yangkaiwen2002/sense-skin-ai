@@ -5,7 +5,7 @@ from app.models.item import Item
 from app.models.platform import Platform
 from app.models.price_snapshot import PriceSnapshot
 from app.schemas.analytics import PlatformAnalytics, ItemOverview, PricePoint
-from app.utils.metrics import compute_avg, compute_return, compute_volatility, compute_liquidity_score
+from app.services.market_data import summarize_snapshots
 from app.utils.risk_rules import compute_risk_labels
 
 
@@ -31,41 +31,25 @@ def get_item_overview(db: Session, item_id: int) -> ItemOverview | None:
         if not snapshots:
             continue
 
-        prices = [s.listing_price for s in snapshots if s.listing_price is not None]
-        if not prices:
+        metrics = summarize_snapshots(snapshots)
+        if metrics is None:
             continue
-
-        current = snapshots[-1]
-        current_price = current.listing_price
-        avg_7d = compute_avg(prices, 7)
-        avg_30d = compute_avg(prices, 30)
-        return_7d = compute_return(prices, 7)
-        volatility_7d = compute_volatility(prices[-30:])
-
-        volumes = [s.volume_24h for s in snapshots[-7:] if s.volume_24h is not None]
-        depths = [s.liquidity_depth for s in snapshots[-7:] if s.liquidity_depth is not None]
-        avg_volume = sum(volumes) / len(volumes) if volumes else None
-        avg_depth = sum(depths) / len(depths) if depths else None
-        spread = current.spread
-
-        liquidity_score = compute_liquidity_score(avg_volume, avg_depth, spread, current_price)
-        risk_labels = compute_risk_labels(volatility_7d, liquidity_score, current_price, avg_30d)
+        risk_labels = compute_risk_labels(metrics["volatility_7d"], metrics["liquidity_score"],
+                                         metrics["current_price"], metrics["avg_30d"])
+        if metrics["is_stale"]:
+            risk_labels.append("报价超过24小时未更新")
 
         platform_analytics.append(
             PlatformAnalytics(
                 platform=platform.name,
                 platform_id=platform.id,
-                current_price=current_price,
-                avg_7d=avg_7d,
-                avg_30d=avg_30d,
-                return_7d=return_7d,
-                volatility_7d=volatility_7d,
-                spread=spread,
-                liquidity_score=liquidity_score,
+                **metrics,
                 risk_labels=risk_labels,
             )
         )
 
+    observed = [p for p in platform_analytics if p.price_kind == "observed"]
+    platform_analytics = observed or platform_analytics
     return ItemOverview(
         item_id=item.id,
         item_name=item.item_name,
@@ -76,7 +60,7 @@ def get_item_overview(db: Session, item_id: int) -> ItemOverview | None:
         stattrak=item.stattrak,
         souvenir=item.souvenir,
         icon_url=item.icon_url,
-        platforms=platform_analytics,
+        platforms=sorted(platform_analytics, key=lambda p: (p.current_price is None, p.is_stale, p.current_price or 0, p.platform_id)),
     )
 
 
@@ -91,16 +75,31 @@ def get_price_history(
 
     if platform_name:
         platform = db.query(Platform).filter(Platform.name.ilike(platform_name)).first()
-        if platform:
-            query = query.filter(PriceSnapshot.platform_id == platform.id)
+        if not platform:
+            return []
+        query = query.filter(PriceSnapshot.platform_id == platform.id)
 
-    snapshots = query.order_by(PriceSnapshot.snapshot_time.asc()).all()
+    else:
+        from app.services.market_data import best_quote
+        quote = best_quote(db, item_id)
+        if quote is None:
+            return []
+        query = query.filter(PriceSnapshot.platform_id == quote.platform_id)
 
+    query = query.filter(PriceSnapshot.snapshot_time <= datetime.utcnow())
+    snapshots = query.order_by(PriceSnapshot.snapshot_time.asc(), PriceSnapshot.id.asc()).all()
+
+    if snapshots:
+        latest = snapshots[-1]
+        snapshots = [s for s in snapshots if s.price_kind == latest.price_kind and s.source == latest.source]
+    daily = {}
+    for snapshot in snapshots:
+        daily[snapshot.snapshot_time.date()] = snapshot
     return [
         PricePoint(
             date=s.snapshot_time.strftime("%Y-%m-%d"),
             price=s.listing_price,
             volume=s.volume_24h,
         )
-        for s in snapshots
+        for s in daily.values()
     ]

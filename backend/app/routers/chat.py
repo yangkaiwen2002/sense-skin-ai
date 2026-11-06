@@ -29,6 +29,7 @@ def _build_system(item: Item, overview, decision=None, event_map=None) -> str:
 
     price_lines = []
     if best:
+        price_lines.append(f"- 数据来源: {best.source}; 类型: {best.price_kind}; 采集时间: {best.snapshot_time}; 已过期: {best.is_stale}")
         if best.current_price:
             price_lines.append(f"- 当前价格 ({best.platform}): ¥{best.current_price:.2f}")
         if best.avg_7d:
@@ -108,7 +109,7 @@ def _build_system(item: Item, overview, decision=None, event_map=None) -> str:
 稀有度: {item.rarity or "未知"} | 磨损: {item.exterior or "未知"}
 StatTrak: {"是" if item.stattrak else "否"} | 纪念品: {"是" if item.souvenir else "否"}
 
-━━━ 实时市场数据 ━━━
+━━━ 已存储市场数据 ━━━
 {price_section}
 
 跨平台价格对比:
@@ -117,7 +118,7 @@ StatTrak: {"是" if item.stattrak else "否"} | 纪念品: {"是" if item.souven
 {event_section}
 
 ━━━ 你的职责 ━━━
-以上数据来自真实的结构化信号管道（价格数据库 + 事件管道 + 多维度 AI 评分模型）。
+以上数据包含采集报价、演示数据或来源未核验的历史记录，按来源标签解释。规则强度不是收益概率。
 基于这些数据，回答用户关于此饰品的问题：
 - 买入/卖出/持有建议（必须引用决策引擎输出）
 - 事件催化分析（引用具体事件）

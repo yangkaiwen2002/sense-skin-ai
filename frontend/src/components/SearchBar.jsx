@@ -1,149 +1,86 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MagnifyingGlass } from '@phosphor-icons/react'
+import { MagnifyingGlass, X } from '@phosphor-icons/react'
 import { searchItems } from '../services/api'
 import { formatCNY } from '../utils/formatters'
-import { RARITY_COLOR } from '../utils/constants'
+import QuoteSource from './QuoteSource'
 
-function highlight(text, query) {
-  if (!query || !text) return text
-  const idx = text.toLowerCase().indexOf(query.toLowerCase())
-  if (idx === -1) return text
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-[var(--accent-soft)] text-[var(--accent-strong)] rounded-sm px-px">
-        {text.slice(idx, idx + query.length)}
-      </mark>
-      {text.slice(idx + query.length)}
-    </>
-  )
-}
-
-export default function SearchBar({ placeholder = '搜索饰品，例如：AK-47 红线、爪子刀…' }) {
+export default function SearchBar({ placeholder = '搜索饰品名称、武器或皮肤…', label = '搜索饰品', onSelect }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
-  const [activeIdx, setActiveIdx] = useState(-1)
-  const ref = useRef(null)
-  const inputRef = useRef(null)
-  const timer = useRef(null)
+  const [active, setActive] = useState(-1)
+  const [retry, setRetry] = useState(0)
+  const root = useRef(null), input = useRef(null)
+  const listId = useId()
   const navigate = useNavigate()
 
-  const doSearch = useCallback(async (q) => {
+  useEffect(() => {
+    if (!open) return
+    let ignore = false
     setLoading(true)
-    const data = await searchItems(q)
-    setResults(data || [])
-    setLoading(false)
-    setOpen(document.activeElement === inputRef.current)
-    setActiveIdx(-1)
+    setFailed(false)
+    setResults([])
+    setActive(-1)
+    const timer = setTimeout(async () => {
+      const data = await searchItems(query.trim())
+      if (ignore) return
+      setFailed(data === null)
+      setResults(Array.isArray(data) ? data : data?.items || [])
+      setLoading(false)
+    }, query ? 200 : 0)
+    return () => { ignore = true; clearTimeout(timer) }
+  }, [query, open, retry])
+
+  useEffect(() => {
+    const outside = e => { if (!root.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('pointerdown', outside)
+    return () => document.removeEventListener('pointerdown', outside)
   }, [])
 
   useEffect(() => {
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => doSearch(query), query ? 200 : 0)
-    return () => clearTimeout(timer.current)
-  }, [query, doSearch])
-
-  useEffect(() => {
-    function handle(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
+    root.current?.querySelector(`[data-search-index="${active}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [active])
 
   function select(item) {
-    setQuery('')
     setOpen(false)
-    navigate(`/item/${item.id}`)
+    setQuery('')
+    if (onSelect) onSelect(item)
+    else navigate(`/item/${item.id}`)
   }
-
-  function onKeyDown(e) {
-    if (!open || results.length === 0) return
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, results.length - 1)) }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, -1)) }
-    else if (e.key === 'Enter') { if (activeIdx >= 0) select(results[activeIdx]); else if (results.length > 0) select(results[0]) }
-    else if (e.key === 'Escape') setOpen(false)
+  function keyDown(e) {
+    if (e.nativeEvent.isComposing) return
+    if (e.key === 'Escape') { setOpen(false); return }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setActive(i => Math.min(i + 1, results.length - 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive(i => Math.max(i - 1, 0)) }
+    if (e.key === 'Enter' && open && results.length && !loading) { e.preventDefault(); select(results[Math.max(active, 0)]) }
   }
-
   return (
-    <div ref={ref} className="relative w-full">
-      <div className="relative">
-        <MagnifyingGlass
-          size={18}
-          weight="bold"
-          className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-opacity duration-150"
-          style={{ opacity: loading ? 0 : 0.4, color: 'var(--text-secondary)' }}
-        />
-        {loading && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-            <div className="w-4 h-4 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent)' }} />
-          </div>
-        )}
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={onKeyDown}
-          onFocus={() => doSearch(query)}
-          aria-label="搜索饰品"
-          placeholder={placeholder}
-          className={`w-full min-h-[44px] bg-white/[0.05] border text-[var(--text-primary)] text-sm outline-none
-            pl-12 pr-4 py-3 transition-colors duration-150
-            ${open && results.length > 0 ? 'rounded-t-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}
-          style={{ borderColor: open ? 'var(--accent-border)' : 'var(--border-default)' }}
-        />
+    <div ref={root} className="search-control" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false) }}>
+      <div className="search-input-wrap">
+        <MagnifyingGlass size={19} aria-hidden="true" />
+        <input ref={input} role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId}
+          aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
+          autoComplete="off" aria-label={label} placeholder={placeholder} value={query}
+          onFocus={() => setOpen(true)} onChange={e => { setQuery(e.target.value); setResults([]); setOpen(true) }} onKeyDown={keyDown} />
+        {query && <button type="button" aria-label="清除搜索" onClick={() => { setQuery(''); input.current?.focus() }}><X size={16} /></button>}
       </div>
-
-      {open && results.length > 0 && (
-        <div
-          className="absolute top-full left-0 right-0 rounded-b-[var(--radius-md)] border border-t-0 overflow-hidden z-[200]"
-          style={{ background: 'var(--bg-surface-raised)', borderColor: 'var(--accent-border)', boxShadow: 'var(--shadow-lg)' }}
-        >
-          <div className="px-3.5 py-1.5 text-[10px] uppercase tracking-wide text-[var(--text-dim)] border-b border-white/[0.04]" style={{ background: 'var(--bg-surface-raised)' }}>
-            {query ? `"${query}" 的搜索结果` : '热门饰品'}
-          </div>
-
-          {results.map((item, i) => {
-            const rc = RARITY_COLOR[item.rarity] || 'var(--accent)'
-            const isActive = i === activeIdx
-            return (
-              <button
-                key={item.id}
-                onMouseDown={() => select(item)}
-                onMouseEnter={() => setActiveIdx(i)}
-                className="w-full text-left min-h-[52px] px-3.5 py-2 flex items-center gap-2.5 text-[13px] text-[var(--text-primary)] transition-colors duration-100 border-0"
-                style={{
-                  background: isActive ? 'var(--accent-soft)' : 'transparent',
-                  borderBottom: i < results.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                }}
-              >
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: rc, boxShadow: `0 0 6px ${rc}80` }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-                      {highlight(item.skin_name || item.item_name, query)}
-                    </span>
-                    {item.stattrak && (
-                      <span className="text-[9px] font-bold shrink-0 rounded px-1 py-px" style={{ color: 'var(--gold)', background: 'var(--gold-soft)', border: '1px solid var(--gold-border)' }}>ST</span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-[var(--text-dim)] mt-0.5">{[item.weapon_type, item.exterior].filter(Boolean).join(' · ')}</div>
-                </div>
-                {item.current_price != null && (
-                  <div className="text-right shrink-0">
-                    <div className="price-display text-sm">{formatCNY(item.current_price)}</div>
-                    {item.platform && <div className="text-[10px] text-[var(--text-dim)] mt-0.5">{item.platform}</div>}
-                  </div>
-                )}
-              </button>
-            )
-          })}
+      {open && <div className="search-menu">
+        <p className="search-caption">{query ? '匹配的饰品' : '浏览饰品'}</p>
+        {loading && <p className="search-message" role="status">正在搜索…</p>}
+        {failed && <div className="search-message" role="alert">暂时无法搜索。<button type="button" className="text-action" onClick={() => setRetry(x => x + 1)}>重试</button></div>}
+        {!loading && !failed && !results.length && <p className="search-message" role="status">没有找到相关饰品，试试武器名称或其他关键词。</p>}
+        <div id={listId} role="listbox" aria-label="搜索结果">
+          {results.map((item, i) => <button type="button" role="option" id={`${listId}-${i}`} data-search-index={i} key={item.id}
+            aria-selected={i === active} className="search-result" tabIndex={-1}
+            onMouseDown={e => e.preventDefault()} onClick={() => select(item)} onMouseEnter={() => setActive(i)}>
+            <span className="search-result-copy"><strong>{item.item_name || item.skin_name}</strong><small>{[item.weapon_type, item.exterior].filter(Boolean).join(' · ')}</small><QuoteSource quote={item} compact /></span>
+            <span className="search-result-price"><strong>{formatCNY(item.current_price)}</strong><small>{item.platform || '暂无平台报价'}</small></span>
+          </button>)}
         </div>
-      )}
+      </div>}
     </div>
   )
 }

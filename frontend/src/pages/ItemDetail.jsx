@@ -1,3 +1,4 @@
+import QuoteSource from "../components/QuoteSource";
 import useWatchlist from "../hooks/useWatchlist";
 import ResearchBrief from "../components/ResearchBrief";
 import SkinImage from "../components/SkinImage";
@@ -5,7 +6,6 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CaretRight } from "@phosphor-icons/react";
 import TrendChart from "../components/TrendChart";
-import AIChat from "../components/AIChat";
 import RiskBadge from "../components/RiskBadge";
 import { ScoreRing } from "../components/ui/Score";
 import DecisionBadge from "../components/ui/Decision";
@@ -13,6 +13,7 @@ import Button from "../components/ui/Button";
 import { CardHeader } from "../components/ui/Card";
 import Skeleton from "../components/ui/Skeleton";
 import ErrorState from "../components/ui/ErrorState";
+import EmptyState from "../components/ui/EmptyState";
 import {
   getItemOverview,
   getItemHistory,
@@ -22,18 +23,17 @@ import {
 } from "../services/api";
 import DecisionPanel from "../components/DecisionPanel";
 import { formatCNY } from "../utils/formatters";
-import { RARITY_COLOR, WEAPON_ABBR } from "../utils/constants";
+import { RARITY_COLOR } from "../utils/constants";
 import PlatformComparisonTable from "../components/PlatformComparisonTable";
 import EventTimeline from "../components/EventTimeline";
 
-const PLATFORM_OPTIONS = ["BUFF", "Steam", "悠悠有品", "IGXE"];
 
 /* ── Big ambient skin display ── */
 function Tag({
   children,
-  color = "rgba(255,255,255,0.1)",
-  text = "rgba(255,255,255,0.55)",
-  border = "rgba(255,255,255,0.12)",
+  color = "var(--bg-surface-raised)",
+  text = "var(--text-secondary)",
+  border = "var(--border-default)",
 }) {
   return (
     <span
@@ -46,57 +46,15 @@ function Tag({
 }
 
 /* ── Platform price row ── */
-function PlatformStrip({ platforms }) {
-  return (
-    <div className="flex gap-2 flex-wrap">
-      {platforms.map((p, i) => (
-        <div
-          key={p.platform}
-          className="rounded-[var(--radius-sm)] border px-3.5 py-2 min-w-[108px]"
-          style={{
-            background:
-              i === 0 ? "var(--accent-soft)" : "rgba(255,255,255,0.04)",
-            borderColor:
-              i === 0 ? "var(--accent-border)" : "var(--border-subtle)",
-          }}
-        >
-          <div className="flex items-center gap-1.5 mb-1">
-            <span
-              className="text-[10px] font-medium"
-              style={{
-                color: i === 0 ? "var(--accent-strong)" : "var(--text-dim)",
-              }}
-            >
-              {p.platform}
-            </span>
-            {i === 0 && (
-              <span
-                className="text-[9px] rounded px-1 py-px"
-                style={{
-                  color: "var(--accent-strong)",
-                  background: "var(--accent-soft)",
-                }}
-              >
-                最优
-              </span>
-            )}
-          </div>
-          <p className="price-display text-base">
-            {p.current_price != null ? formatCNY(p.current_price) : "—"}
-          </p>
-          {p.return_7d != null && (
-            <p
-              className="text-[10px] mt-0.5 font-tabular"
-              style={{ color: p.return_7d >= 0 ? "var(--up)" : "var(--down)" }}
-            >
-              {p.return_7d >= 0 ? "+" : ""}
-              {(p.return_7d * 100).toFixed(1)}%
-            </p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+function PlatformStrip({ platforms, bestPlatform }) {
+  return <div className="platform-strip">{platforms.map(p => <div key={p.platform} className={`platform-quote ${p.platform === bestPlatform ? 'is-best' : ''}`}>
+    <div className="flex items-center justify-between gap-2 mb-2"><span className="text-xs font-semibold">{p.platform}</span>
+      {p.platform === bestPlatform && <span className="source-badge source-observed">最低参考价</span>}</div>
+    <p className="price-display text-xl">{formatCNY(p.current_price)}</p>
+    {p.return_7d != null && <p className="text-xs font-tabular mt-1" style={{ color: p.return_7d >= 0 ? 'var(--up)' : 'var(--down)' }}>
+      {p.return_7d >= 0 ? '+' : ''}{(p.return_7d * 100).toFixed(2)}% <span className="text-[var(--text-dim)]">/ 7日</span></p>}
+    <QuoteSource quote={p} />
+  </div>)}</div>;
 }
 
 export default function ItemDetail() {
@@ -115,70 +73,67 @@ export default function ItemDetail() {
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reload, setReload] = useState(0);
+  const [historyReload, setHistoryReload] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyFailed, setHistoryFailed] = useState(false);
+  const [eventsFailed, setEventsFailed] = useState(false);
 
   useEffect(() => {
-    if (id) loadAll();
-  }, [id]);
-  useEffect(() => {
-    loadHistory();
-  }, [id, platform, days]);
-
-  async function loadAll() {
+    let ignore = false;
     setLoading(true);
     setDecisionLoading(true);
+    setDecision(null);
     setError(null);
-    const [ov, cmp, ev] = await Promise.all([
-      getItemOverview(id),
-      getItemCompare(id),
-      getItemEvents(id, 60),
-    ]);
-    if (!ov) {
-      setError("饰品数据未找到");
-      setLoading(false);
-      setDecisionLoading(false);
-      return;
-    }
-    setOverview(ov);
-    setCompare(cmp);
-    setEvents(Array.isArray(ev) ? ev : ev?.events || []);
-    setLoading(false);
-    getItemDecision(id).then((d) => {
-      setDecision(d);
-      setDecisionLoading(false);
+    Promise.all([getItemOverview(id), getItemCompare(id), getItemEvents(id, 60), getItemDecision(id)])
+      .then(([ov, cmp, ev, result]) => {
+        if (ignore) return;
+        if (!ov) setError("饰品数据未找到");
+        setOverview(ov);
+        setCompare(cmp);
+        setEventsFailed(ev == null);
+        setEvents(Array.isArray(ev) ? ev : ev?.events || []);
+        setDecision(result);
+        if (ov?.platforms?.length && !ov.platforms.some(p => p.platform === platform)) {
+          setPlatform(ov.platforms[0].platform);
+        }
+        setLoading(false);
+        setDecisionLoading(false);
+      });
+    return () => { ignore = true; };
+  }, [id, reload]);
+
+  useEffect(() => {
+    let ignore = false;
+    setHistory([]);
+    setHistoryLoading(true);
+    setHistoryFailed(false);
+    getItemHistory(id, days, platform).then(data => {
+      if (!ignore) {
+        setHistory(data?.history || data || []);
+        setHistoryFailed(data == null);
+        setHistoryLoading(false);
+      }
     });
-  }
+    return () => { ignore = true; };
+  }, [id, platform, days, historyReload]);
 
-  async function loadHistory() {
-    const data = await getItemHistory(id, days, platform);
-    setHistory(data?.history || data || []);
-  }
-
-  if (loading)
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div
-          className="w-10 h-10 rounded-full border-2 animate-spin"
-          style={{
-            borderColor: "var(--accent-border)",
-            borderTopColor: "var(--accent)",
-          }}
-        />
-      </div>
-    );
+  if (loading) return <div className="page-shell space-y-5" role="status" aria-label="正在载入饰品研究">
+    <Skeleton w="35%" h={20} /><Skeleton h={280} /><Skeleton h={160} /><Skeleton h={300} />
+  </div>;
 
   if (error || !overview)
     return (
       <div className="max-w-lg mx-auto">
         <ErrorState
           message={error || "加载失败"}
-          onRetry={() => navigate("/")}
-          retryLabel="← 返回市场"
+          onRetry={() => setReload(n => n + 1)}
         />
       </div>
     );
 
   const platforms = overview.platforms || [];
-  const best = platforms[0];
+  const best = platforms.find(p => p.current_price > 0);
   const scores = decision?.score_summary;
   const rc = RARITY_COLOR[overview.rarity] || "var(--accent)";
   const displayName = overview.item_name || overview.skin_name;
@@ -210,8 +165,8 @@ export default function ItemDetail() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[38%_1fr] gap-0 items-center pb-8 sm:min-h-[380px]">
-            <div className="sm:pr-5 pb-2 sm:pb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-[30%_1fr] gap-0 items-center pb-5 sm:min-h-[280px]">
+            <div className="sm:pr-5 pb-2 sm:pb-4">
               <SkinImage
                 iconUrl={overview.icon_url}
                 name={overview.item_name}
@@ -219,7 +174,7 @@ export default function ItemDetail() {
               />
             </div>
 
-            <div className="py-2 sm:py-8 sm:pl-2 flex flex-col gap-0">
+            <div className="py-2 sm:py-4 sm:pl-2 flex flex-col gap-0">
               <div className="flex items-center gap-2 flex-wrap mb-2.5">
                 {overview.rarity && (
                   <span
@@ -262,7 +217,7 @@ export default function ItemDetail() {
                 {best && (
                   <div>
                     <p className="text-[10px] text-[var(--text-dim)] mb-1.5 uppercase tracking-widest">
-                      {best.platform} · 最优价格
+                      {best.platform} · {best.is_stale ? '历史参考价' : '优先参考价'}
                     </p>
                     <p
                       className="price-display"
@@ -273,6 +228,7 @@ export default function ItemDetail() {
                     >
                       {formatCNY(best.current_price)}
                     </p>
+                    <QuoteSource quote={best} />
                   </div>
                 )}
                 <div>
@@ -332,13 +288,14 @@ export default function ItemDetail() {
                 )}
                 {best?.avg_30d && (
                   <div className="text-xs text-[var(--text-secondary)] font-tabular">
-                    均价 {formatCNY(best.avg_30d)}
+                    30日均价 {formatCNY(best.avg_30d)}
                   </div>
                 )}
                 {riskLabels.length > 0 && <RiskBadge labels={riskLabels} />}
               </div>
 
               <div className="flex gap-2 flex-wrap">
+                <Button variant="primary" onClick={() => navigate(`/research?item=${id}`)}>用 AI 继续研究</Button>
                 <Button
                   onClick={() => toggleSaved(id)}
                   aria-pressed={saved.includes(id)}
@@ -352,8 +309,8 @@ export default function ItemDetail() {
                   平台对比
                 </Button>
                 <Button
-                  variant="primary"
-                  onClick={() => navigate("/rent-vs-buy")}
+                  variant="secondary"
+                  onClick={() => navigate(`/rent-vs-buy?item=${id}`)}
                 >
                   租 vs 买
                 </Button>
@@ -372,102 +329,56 @@ export default function ItemDetail() {
       {platforms.length > 0 && (
         <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-            <PlatformStrip platforms={platforms} />
+            <PlatformStrip platforms={platforms} bestPlatform={compare?.best_platform} />
           </div>
         </div>
       )}
 
-      {/* ══════════════ PROGRESSIVE DISCLOSURE ══════════════
-          price history → decision evidence (score dims + evidence chain +
-          event signals) → item event history → market comparison → AI analyst
-      ══════════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-14">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 items-start">
-          {/* ── MAIN: analytical content ── */}
-          <div className="flex flex-col gap-4 min-w-0">
-            <div className="surface-card p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
-                  价格走势
-                </p>
-                <div className="flex gap-1.5 flex-wrap">
-                  {PLATFORM_OPTIONS.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPlatform(p)}
-                      className="text-[11px] px-2.5 py-1 rounded-[var(--radius-sm)] font-medium transition-colors"
-                      style={{
-                        background:
-                          platform === p
-                            ? "var(--accent)"
-                            : "rgba(255,255,255,0.05)",
-                        color: platform === p ? "white" : "var(--text-dim)",
-                      }}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                  <div className="w-px bg-[var(--border-default)] mx-1" />
-                  {[7, 14, 30].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setDays(d)}
-                      className="text-[11px] px-2 py-1 rounded-[var(--radius-sm)]"
-                      style={{
-                        background:
-                          days === d ? "var(--accent-soft)" : "transparent",
-                        color: days === d ? "var(--accent)" : "var(--text-dim)",
-                      }}
-                    >
-                      {d}天
-                    </button>
-                  ))}
+        <nav className="section-jumps" aria-label="研究内容导航">
+          <a href="#research">研究简报</a><a href="#history">价格走势</a><a href="#comparison">平台报价</a><a href="#signals">信号依据</a><a href="#events">市场事件</a>
+        </nav>
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+          <div className="flex flex-col gap-5 min-w-0">
+            <div id="research" className="analysis-section"><ResearchBrief overview={overview} decision={decision} loading={decisionLoading} /></div>
+            <section id="history" className="surface-card p-4 sm:p-5 analysis-section">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <h2 className="text-base font-semibold">价格走势</h2>
+                <div className="flex gap-1 flex-wrap" aria-label="走势筛选">
+                  {platforms.map(p => <button key={p.platform} onClick={() => setPlatform(p.platform)} aria-pressed={platform === p.platform}
+                    className={`filter-tab ${platform === p.platform ? 'is-active' : ''}`}>{p.platform}</button>)}
+                  <span className="w-px bg-[var(--border-default)] mx-1" />
+                  {[7, 14, 30].map(d => <button key={d} onClick={() => setDays(d)} aria-pressed={days === d}
+                    className={`filter-tab ${days === d ? 'is-active' : ''}`}>{d}天</button>)}
                 </div>
               </div>
-              <TrendChart
-                data={history}
-                avg7d={platforms.find((p) => p.platform === platform)?.avg_7d}
-                avg30d={platforms.find((p) => p.platform === platform)?.avg_30d}
-              />
-            </div>
-
-            {/* Decision & evidence — the differentiator, full width, visible by default */}
-            <ResearchBrief
-              overview={overview}
-              decision={decision}
-              loading={decisionLoading}
-            />
-            <DecisionPanel decision={decision} loading={decisionLoading} />
-
-            {events.length > 0 && (
-              <div className="surface-card p-4 sm:p-5">
-                <CardHeader
-                  title="近期市场事件"
-                  sub="影响该饰品评分的历史与近期信号"
-                />
-                <EventTimeline events={events} />
-              </div>
-            )}
+              <div className="mb-4"><p className="muted-copy">{platform} · 最近 {days} 天的已有快照</p><QuoteSource quote={platforms.find(p => p.platform === platform)} /></div>
+              {historyLoading ? <div role="status" aria-label="正在载入走势"><Skeleton h={260} /></div> : historyFailed ?
+                <ErrorState message="价格走势加载失败" onRetry={() => setHistoryReload(n => n + 1)} /> :
+                <TrendChart data={history} avg7d={platforms.find(p => p.platform === platform)?.avg_7d} avg30d={platforms.find(p => p.platform === platform)?.avg_30d} />}
+            </section>
+            <section id="comparison" className="surface-card p-4 sm:p-5 analysis-section">
+              <CardHeader title="平台报价" sub="核对来源、采集时间与费用后，再比较价格。" />
+              {compare ? <PlatformComparisonTable platforms={compare.platforms} /> : <ErrorState message="平台报价加载失败" onRetry={() => setReload(n => n + 1)} />}
+              <Button variant="ghost" className="mt-3" onClick={() => navigate(`/compare/${id}`)}>打开完整平台对比 →</Button>
+            </section>
+            <section id="events" className="surface-card p-4 sm:p-5 analysis-section">
+              <details>
+                <summary className="cursor-pointer text-sm font-semibold">市场事件与官方公告 <span className="text-[var(--text-dim)] font-normal">· {events.length} 条</span></summary>
+                <p className="muted-copy mt-2 mb-4">官方公告为全局市场背景，对本饰品的价格影响仍待评估。</p>
+                {eventsFailed ? <ErrorState message="市场事件加载失败" onRetry={() => setReload(n => n + 1)} /> : <EventTimeline events={events} compact />}
+              </details>
+            </section>
           </div>
-
-          {/* ── SIDEBAR: market comparison + supportive AI analyst ── */}
-          <div className="flex flex-col gap-4">
-            {compare && (
-              <div className="surface-card p-4 sm:p-5">
-                <CardHeader title="平台价格对比" />
-                <PlatformComparisonTable platforms={compare.platforms} />
-              </div>
-            )}
-
-            <div>
-              <p className="text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wide mb-2 px-0.5">
-                深度 AI 分析 · 辅助参考
-              </p>
-              <div className="surface-card overflow-hidden">
-                <AIChat itemId={id} itemName={displayName} />
-              </div>
-            </div>
-          </div>
+          <aside className="analysis-sidebar min-w-0">
+            <section id="signals" className="analysis-section">
+              <h2 className="text-sm font-semibold mb-3">规则信号与依据</h2>
+              {decision ? <DecisionPanel decision={decision} loading={decisionLoading} /> : !platforms.some(p => p.current_price > 0 && !p.is_stale) ? <EmptyState title="暂无可用研究信号" sub="报价已过期或数据不足，更新行情后再查看研究。" /> : <ErrorState message="研究信号暂时无法载入" onRetry={() => setReload(n => n + 1)} />}
+            </section>
+            <section><h2 className="text-sm font-semibold mb-3">AI 研究助手 <span className="text-xs font-normal text-[var(--text-dim)]">· 辅助参考</span></h2>
+              <div className="surface-card p-5"><p className="muted-copy mb-4">带着当前饰品继续提问，核对最新数据、查看执行过程，并保存带来源的研究记录。</p><Button variant="primary" className="w-full" onClick={() => navigate(`/research?item=${id}`)}>开始研究 {displayName}</Button></div>
+            </section>
+          </aside>
         </div>
       </div>
     </div>

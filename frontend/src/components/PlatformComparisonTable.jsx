@@ -1,3 +1,4 @@
+import QuoteSource from "./QuoteSource"
 import { formatCNY } from '../utils/formatters'
 import { PLATFORM_COLORS } from '../utils/constants'
 import EmptyState from './ui/EmptyState'
@@ -11,13 +12,17 @@ export default function PlatformComparisonTable({ platforms = [] }) {
   }
 
   return (
-    <div className="overflow-x-auto -mx-1 px-1">
-      <table className="w-full text-[13px] border-collapse min-w-[420px]">
+    <div>
+      <p className="text-xs text-[var(--text-dim)] mb-3 sm:hidden">左右滑动查看全部指标 →</p>
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="平台报价明细，可横向滚动">
+      <table className="w-full text-[13px] border-collapse min-w-[600px]">
+        <caption className="sr-only">平台价格、数据来源、采集时间和流动性对比</caption>
         <thead>
           <tr className="border-b border-[var(--border-subtle)]">
             {HEADERS.map(h => (
               <th
                 key={h}
+                scope="col"
                 className={`px-3 py-2 font-medium text-[11px] uppercase tracking-wide whitespace-nowrap text-[var(--text-dim)] ${h === '平台' ? 'text-left' : 'text-right'}`}
               >
                 {h}
@@ -29,7 +34,7 @@ export default function PlatformComparisonTable({ platforms = [] }) {
           {platforms.map((p, i) => (
             <tr
               key={p.platform}
-              className={i < platforms.length - 1 ? 'border-b border-white/[0.04]' : ''}
+              className={i < platforms.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}
               style={{ background: p.is_best_price ? 'var(--accent-soft)' : 'transparent' }}
             >
               <td className="px-3 py-2.5">
@@ -37,12 +42,13 @@ export default function PlatformComparisonTable({ platforms = [] }) {
                   <div className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: PLATFORM_COLORS[p.platform] || 'var(--accent)' }} />
                   <span className="font-medium text-[var(--text-primary)]">{p.platform}</span>
                   {p.is_best_price && (
-                    <span className="text-[10px] rounded px-1 py-px" style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)', border: '1px solid var(--accent-border)' }}>最优</span>
+                    <span className="text-[10px] rounded px-1 py-px" style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)', border: '1px solid var(--accent-border)' }}>最低参考价</span>
                   )}
                   {p.supports_rental && (
                     <span className="text-[10px] rounded px-1 py-px border border-[var(--border-default)] text-[var(--text-secondary)]">租赁</span>
                   )}
                 </div>
+                <QuoteSource quote={p} />
               </td>
               <td className="px-3 py-2.5 text-right price-display">{formatCNY(p.current_price)}</td>
               <td className="px-3 py-2.5 text-right text-[var(--text-secondary)] font-tabular">{formatCNY(p.avg_7d)}</td>
@@ -59,6 +65,7 @@ export default function PlatformComparisonTable({ platforms = [] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

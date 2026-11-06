@@ -25,7 +25,11 @@ def get_item_score(item_id: int, db: Session = Depends(get_db)):
     - reasons_to_buy
     - risks
     """
-    result = score_item_dict(db, item_id)
+    item = db.get(Item, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    event_map = map_events_to_item(item, get_active_events(days=90))
+    result = score_item_dict(db, item_id, event_map=event_map)
     if result is None:
         raise HTTPException(status_code=404, detail="Item not found or insufficient data")
     return result

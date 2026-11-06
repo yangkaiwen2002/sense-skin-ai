@@ -1,240 +1,92 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { CaretRight } from "@phosphor-icons/react";
-import { searchItems, rentVsBuy } from "../services/api";
-import RentVsBuyCard from "../components/RentVsBuyCard";
-import Button from "../components/ui/Button";
-
-const QUICK_DAYS = [3, 7, 14, 30];
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { CaretRight, Calculator, CheckCircle } from '@phosphor-icons/react'
+import { getItemOverview, rentVsBuy } from '../services/api'
+import SearchBar from '../components/SearchBar'
+import SkinImage from '../components/SkinImage'
+import QuoteSource from '../components/QuoteSource'
+import RentVsBuyCard from '../components/RentVsBuyCard'
+import Button from '../components/ui/Button'
+import { formatCNY } from '../utils/formatters'
 
 export default function RentVsBuy() {
-  const navigate = useNavigate();
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [days, setDays] = useState(7);
-  const [budget, setBudget] = useState(1000);
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const initialItem = params.get('item')
+  const [selected, setSelected] = useState(null), [days, setDays] = useState(7), [budget, setBudget] = useState(1000)
+  const [result, setResult] = useState(null), [loading, setLoading] = useState(false), [error, setError] = useState('')
+  const [selecting, setSelecting] = useState(false)
+  const version = useRef(0)
   useEffect(() => {
-    let cancelled = false;
-    if (selectedItem || !searchQuery.trim()) {
-      setSuggestions([]);
-      return;
-    }
-    const t = setTimeout(async () => {
-      const res = await searchItems(searchQuery);
-      if (!cancelled) setSuggestions(res?.items || res || []);
-    }, 300);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [searchQuery, selectedItem]);
-
-  function selectItem(item) {
-    setSelectedItem(item);
-    setSearchQuery(item.item_name || item.skin_name);
-    setSuggestions([]);
-    setResult(null);
+    let ignore = false
+    version.current++
+    setResult(null); setSelected(null); setError(''); setLoading(false); setSelecting(false)
+    if (!initialItem) return
+    setSelecting(true)
+    getItemOverview(initialItem).then(item => {
+      if (ignore) return
+      if (item) setSelected({ ...item, id: item.item_id, quote: item.platforms?.[0] })
+      else setError('预选饰品无法载入，请重新搜索。')
+      setSelecting(false)
+    })
+    return () => { ignore = true }
+  }, [initialItem])
+  useEffect(() => () => { version.current++ }, [])
+  function select(item) { version.current++; setSelected(item); setResult(null); setError('') }
+  function edit(setter, value) { setter(value); setResult(null); setError('') }
+  async function submit(e) {
+    e.preventDefault()
+    if (!selected) return
+    const requestVersion = ++version.current
+    setLoading(true); setError(''); setResult(null)
+    const data = await rentVsBuy(selected.id, { days: Number(days), budget: Number(budget) })
+    if (requestVersion !== version.current) return
+    setLoading(false)
+    if (data) setResult(data)
+    else setError('计算暂时失败，请检查输入或稍后重试。')
   }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!selectedItem) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    const res = await rentVsBuy(selectedItem.id, { days, budget });
-    setLoading(false);
-    if (res) setResult(res);
-    else setError("计算失败，请稍后重试");
-  }
-
-  return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-      <div className="flex items-center gap-1.5 text-xs text-[var(--text-dim)] mb-5">
-        <button
-          onClick={() => navigate("/")}
-          className="hover:text-[var(--text-secondary)] transition-colors"
-        >
-          首页
-        </button>
-        <CaretRight size={11} />
-        <span className="text-[var(--text-secondary)]">租赁 vs 购买</span>
-      </div>
-
-      <h1 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-        租赁 vs 购买分析
-      </h1>
-      <p className="text-[var(--text-dim)] text-sm mb-7 leading-relaxed">
-        输入使用天数，系统自动计算租赁费用与购买后转卖的成本差异
-      </p>
-
-      <form onSubmit={handleSubmit} className="space-y-6 mb-8 surface-card p-5 sm:p-7">
-        <div>
-          <label className="block text-[var(--text-secondary)] text-sm font-medium mb-2">
-            饰品
-          </label>
-          <div className="relative">
-            <input
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSelectedItem(null);
-                setResult(null);
-              }}
-              placeholder="搜索饰品..." aria-label="选择饰品"
-              className="w-full min-h-[44px] bg-white/[0.05] border border-[var(--border-default)] text-[var(--text-primary)]
-                placeholder:text-[var(--text-dim)] rounded-[var(--radius-md)] px-4 py-3 text-sm outline-none
-                focus:border-[var(--accent-border)] transition-colors duration-150"
-            />
-            {suggestions.length > 0 && (
-              <div
-                className="absolute top-full left-0 right-0 mt-1 rounded-[var(--radius-md)] border border-[var(--border-default)] overflow-hidden z-10"
-                style={{
-                  background: "var(--bg-surface-raised)",
-                  boxShadow: "var(--shadow-lg)",
-                }}
-              >
-                {suggestions.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => selectItem(s)}
-                    className="w-full text-left min-h-[52px] px-4 py-2.5 hover:bg-white/[0.05] border-b border-white/[0.04] last:border-0 transition-colors"
-                  >
-                    <p className="text-[var(--text-primary)] text-sm font-medium">
-                      {s.item_name || s.skin_name}
-                    </p>
-                    <p className="text-[var(--text-dim)] text-xs mt-0.5">
-                      {s.weapon_type}
-                    </p>
-                  </button>
-                ))}
+  return <div className="page-shell">
+    <div className="breadcrumb"><button onClick={() => navigate('/')}>饰品市场</button><CaretRight size={12} /><span>租买计算</span></div>
+    <div className="page-heading"><div><span className="eyebrow">RENT OR BUY</span><h1>短期用，还是长期留？</h1><p>比较使用成本，也看清购买本金与押金需求。</p></div></div>
+    <div className="rental-layout">
+      <div>
+        <form onSubmit={submit} className="surface-card p-5 sm:p-7">
+          <fieldset disabled={loading || selecting} className="space-y-6 min-w-0">
+            <div><p className="field-label">01 · 选择饰品</p>
+              {selecting ? <p role="status" className="muted-copy">正在载入饰品…</p> : selected ? <div className="selected-item">
+                <SkinImage iconUrl={selected.icon_url} name={selected.item_name} />
+                <div><strong>{selected.item_name}</strong><QuoteSource quote={selected.quote || selected} compact /></div>
+                <Button size="sm" variant="ghost" onClick={() => select(null)}>更换</Button>
+              </div> : <SearchBar label="选择计算饰品" placeholder="搜索想使用的饰品…" onSelect={select} />}
+            </div>
+            <div className="form-row">
+              <div><label className="field-label" htmlFor="rental-days">02 · 使用天数</label>
+                <div className="flex gap-1 mb-3">{[3, 7, 14, 30].map(d => <button type="button" key={d} className={`filter-tab ${Number(days) === d ? 'is-active' : ''}`} aria-pressed={Number(days) === d} onClick={() => edit(setDays, d)}>{d}天</button>)}</div>
+                <input id="rental-days" className="field-input" type="number" min="1" max="365" required value={days} onChange={e => edit(setDays, e.target.value)} />
+                <p className="field-help">支持 1–365 天。</p>
               </div>
-            )}
-          </div>
-          {selectedItem && (
-            <p
-              className="text-xs mt-1.5"
-              style={{ color: "var(--accent-strong)" }}
-            >
-              已选择：{selectedItem.item_name || selectedItem.skin_name}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-[var(--text-secondary)] text-sm font-medium mb-2">
-            使用天数
-          </label>
-          <div className="flex gap-2 mb-3 flex-wrap">
-            {QUICK_DAYS.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDays(d)}
-                className="min-h-[40px] px-4 rounded-[var(--radius-sm)] text-sm transition-colors duration-150"
-                style={{
-                  background:
-                    days === d ? "var(--accent)" : "rgba(255,255,255,0.06)",
-                  color: days === d ? "white" : "var(--text-secondary)",
-                }}
-              >
-                {d} 天
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={days}
-              onChange={(e) =>
-                setDays(Math.max(1, Math.min(365, Number(e.target.value))))
-              }
-              min={1}
-              max={365}
-              className="w-28 min-h-[40px] bg-white/[0.05] border border-[var(--border-default)] text-[var(--text-primary)] rounded-[var(--radius-sm)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-border)]"
-            />
-            <span className="text-[var(--text-dim)] text-sm">天</span>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[var(--text-secondary)] text-sm font-medium mb-2">
-            预算上限（元）
-          </label>
-          <input
-            type="number"
-            value={budget}
-            onChange={(e) => setBudget(Math.max(0, Number(e.target.value)))}
-            min={0}
-            step={100}
-            className="w-36 min-h-[40px] bg-white/[0.05] border border-[var(--border-default)] text-[var(--text-primary)] rounded-[var(--radius-sm)] px-3 py-2 text-sm outline-none focus:border-[var(--accent-border)]"
-          />
-        </div>
-
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={!selectedItem || loading}
-          loading={loading}
-        >
-          {loading ? "计算中…" : "开始分析"}
-        </Button>
-      </form>
-
-      {error && (
-        <div
-          className="rounded-[var(--radius-md)] p-4 mb-6"
-          style={{
-            background: "var(--avoid-soft)",
-            border: "1px solid rgba(229,72,77,0.3)",
-          }}
-        >
-          <p className="text-sm" style={{ color: "#f5a3a6" }}>
-            {error}
-          </p>
-        </div>
-      )}
-
-      {result && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className="w-1 h-5 rounded-full"
-              style={{ background: "var(--accent)" }}
-            />
-            <h2 className="text-[var(--text-primary)] font-semibold">
-              {result.item_name} · {result.days} 天分析结果
-            </h2>
-          </div>
-          <RentVsBuyCard
-            rent_cost={result.rent_cost}
-            buy_resale_loss={result.buy_resale_loss}
-            recommendation={result.recommendation}
-            explanation={result.explanation}
-            days={result.days}
-            rental_platform={result.rental_platform}
-            buy_platform={result.buy_platform}
-          />
-          <div className="flex gap-2 mt-4 flex-wrap">
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/item/${selectedItem.id}`)}
-            >
-              查看价格详情
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => navigate(`/compare/${selectedItem.id}`)}
-            >
-              平台对比
-            </Button>
-          </div>
-        </div>
-      )}
+              <div><label className="field-label" htmlFor="rental-budget">03 · 可用预算（元）</label>
+                <p className="field-help mb-3 min-h-[40px]">用于判断是否能承担前期资金。</p>
+                <input id="rental-budget" className="field-input" type="number" min="0" step="0.01" required value={budget} onChange={e => edit(setBudget, e.target.value)} />
+                <p className="field-help">押金金额未知时，不会视为零押金。</p>
+              </div>
+            </div>
+            <Button type="submit" variant="primary" disabled={!selected} loading={loading} className="w-full"><Calculator size={18} />{loading ? '正在比较方案…' : '比较租赁与购买'}</Button>
+          </fieldset>
+        </form>
+        {error && <p role="alert" className="notice notice-error">{error}</p>}
+        {result && <section className="mt-6" aria-label="租买分析结果" aria-live="polite">
+          <div className="flex items-center gap-2 mb-3"><CheckCircle size={19} className="text-[var(--accent)]" /><h2 className="text-base font-semibold">{result.days} 天使用方案</h2></div>
+          <p className="muted-copy mb-3">{result.item_name} · 预算 {formatCNY(result.budget)}</p>
+          <RentVsBuyCard {...result} />
+          <div className="flex gap-3 flex-wrap mt-4"><Button onClick={() => navigate(`/item/${result.item_id}`)}>查看饰品研究</Button><Button variant="ghost" onClick={() => navigate(`/compare/${result.item_id}`)}>核对平台报价</Button></div>
+        </section>}
+      </div>
+      <aside className="calculation-notes"><h2>计算前，了解这些假设</h2><ol>
+        <li><strong>租赁成本</strong><br />按已有日租与周租报价计算。租赁数据目前仍为演示数据。</li>
+        <li><strong>购买成本</strong><br />展示转卖损耗情景，默认按购买价的 4% 计算；购买时仍需支付全部本金。</li>
+        <li><strong>尚未包含</strong><br />平台手续费、未来涨跌以及未知的押金金额。结果用于比较，不是收益预测。</li>
+      </ol></aside>
     </div>
-  );
+  </div>
 }

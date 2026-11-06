@@ -55,7 +55,10 @@ export default function AIChat({ itemId, itemName }) {
   const inputRef = useRef(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = bottomRef.current?.parentElement
+    if (container && (history.length || streamingText)) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+    }
   }, [history, streamingText])
 
   async function send(question) {
@@ -99,7 +102,7 @@ export default function AIChat({ itemId, itemName }) {
   const showQuickQuestions = history.length === 0 && !streaming
 
   return (
-    <div className="flex flex-col h-full min-h-[340px]">
+    <div className="flex flex-col h-[420px]">
       {/* Header */}
       <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] flex items-center gap-2 shrink-0">
         <Circle size={7} weight="fill" className="glow-pulse" style={{ color: 'var(--accent)' }} />
@@ -108,11 +111,11 @@ export default function AIChat({ itemId, itemName }) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3.5 flex flex-col gap-2.5">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3.5 flex flex-col gap-2.5">
         {showQuickQuestions && (
           <div>
             <p className="text-[11px] text-[var(--text-dim)] text-center mb-3 leading-relaxed">
-              基于已载入的市场数据提问；无 AI 服务时可使用左侧研究简报。
+              基于已载入的市场数据提问，也可查看本地研究简报。
             </p>
             <div className="flex flex-col gap-1.5">
               {QUICK_QUESTIONS.map(q => (
@@ -175,7 +178,8 @@ export default function AIChat({ itemId, itemName }) {
           onKeyDown={handleKey}
           disabled={streaming}
           placeholder="问问 AI 关于这个饰品…"
-          className="flex-1 min-w-0 bg-white/[0.05] border border-[var(--border-default)] rounded-[var(--radius-sm)]
+          aria-label="向 AI 研究助手提问"
+          className="flex-1 min-w-0 bg-[var(--bg-surface-raised)] border border-[var(--border-default)] rounded-[var(--radius-sm)]
             px-3 py-2 text-[13px] text-[var(--text-primary)] outline-none transition-colors duration-150
             focus:border-[var(--accent-border)] placeholder:text-[var(--text-dim)]"
         />
@@ -187,7 +191,7 @@ export default function AIChat({ itemId, itemName }) {
             disabled:cursor-not-allowed active:scale-95"
           style={{
             background: streaming || !input.trim() ? 'var(--accent-soft)' : 'var(--accent)',
-            color: streaming || !input.trim() ? 'rgba(255,255,255,0.3)' : 'white',
+            color: streaming || !input.trim() ? 'var(--text-disabled)' : 'white',
           }}
         >
           <PaperPlaneRight size={16} weight="fill" />

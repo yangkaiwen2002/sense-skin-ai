@@ -5,7 +5,7 @@ export default function RiskBadge({ labels = [] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {labels.map(label => {
-        const colors = RISK_COLORS[label] || RISK_COLORS['Stable']
+        const colors = RISK_COLORS[label] || RISK_COLORS.Unknown
         return (
           <span
             key={label}

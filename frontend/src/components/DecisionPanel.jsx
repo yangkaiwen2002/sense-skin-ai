@@ -56,7 +56,7 @@ export default function DecisionPanel({ decision, loading }) {
           <span>规则信号强度</span>
           <span className="font-tabular font-semibold" style={{ color: meta.color }}>{conf}%</span>
         </div>
-        <div className="h-2 rounded-full bg-white/[0.07] overflow-hidden">
+        <div className="h-2 rounded-full bg-[var(--bg-surface-raised)] overflow-hidden">
           <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${conf}%`, background: meta.color }} />
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function DecisionPanel({ decision, loading }) {
       </div>
 
       {/* Upside / Risk */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
         <div>
           <div className="text-xs font-semibold mb-1.5" style={{ color: 'var(--buy)' }}>做多因素</div>
           {decision.upside_factors?.length ? decision.upside_factors.slice(0, 3).map((u, i) => (

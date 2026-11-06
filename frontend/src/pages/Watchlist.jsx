@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Star, Trash, ArrowRight } from "@phosphor-icons/react";
 import useWatchlist from "../hooks/useWatchlist";
+import QuoteSource from "../components/QuoteSource";
+import Skeleton from "../components/ui/Skeleton";
 import SkinImage from "../components/SkinImage";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
@@ -19,7 +21,7 @@ export default function Watchlist() {
     setLoading(true);
     Promise.all(ids.map((id) => getItemOverview(id))).then((data) => {
       if (ignore) return;
-      setItems(data.filter(Boolean));
+      setItems(data.map((item, index) => item || { item_id: ids[index], unavailable: true }));
       setFailed(data.some((x) => !x));
       setLoading(false);
     });
@@ -28,10 +30,11 @@ export default function Watchlist() {
     };
   }, [ids, reload]);
   return (
-    <div className="market-container py-8">
-      <div className="flex justify-between items-start gap-4 mb-6">
+    <div className="page-shell">
+      <div className="page-heading">
         <div>
-          <h1 className="text-2xl font-semibold mb-2">
+          <span className="eyebrow">YOUR WATCHLIST</span>
+          <h1>
             我的自选{" "}
             <span className="text-sm text-[var(--text-dim)]">{ids.length}</span>
           </h1>
@@ -47,7 +50,7 @@ export default function Watchlist() {
         </p>
       )}
       {failed && (
-        <div role="alert" className="mb-4 text-sm">
+        <div role="alert" className="notice notice-error">
           部分饰品暂时无法载入。
           <button
             className="text-[var(--accent)] ml-2"
@@ -58,9 +61,7 @@ export default function Watchlist() {
         </div>
       )}
       {loading ? (
-        <p role="status" className="py-12 text-center text-[var(--text-dim)]">
-          正在更新自选行情…
-        </p>
+        <div className="watchlist-grid" role="status" aria-label="正在更新自选行情">{ids.map(id => <div key={id} className="surface-card p-4 space-y-4"><Skeleton h={180} /><Skeleton h={20} /><Skeleton h={14} w="70%" /></div>)}</div>
       ) : ids.length === 0 ? (
         <EmptyState
           icon={Star}
@@ -77,9 +78,9 @@ export default function Watchlist() {
           {items.map((item) => (
             <article
               key={item.item_id}
-              className="surface-card overflow-hidden"
+              className="surface-card overflow-hidden watchlist-card"
             >
-              <button
+              {item.unavailable ? <div className="p-5"><h2 className="font-semibold mb-2">饰品 #{item.item_id}</h2><p className="muted-copy mb-4">当前无法载入，收藏仍为你保留。</p><div className="flex gap-2"><Button onClick={() => setReload(x => x + 1)}>重新加载</Button><Button variant="ghost" onClick={() => toggle(item.item_id)}>移出自选</Button></div></div> : <><button
                 className="watchlist-art"
                 onClick={() => navigate(`/item/${item.item_id}`)}
                 aria-label={`查看${item.item_name}`}
@@ -98,9 +99,10 @@ export default function Watchlist() {
                     {item.platforms?.[0]?.platform}
                   </span>
                 </div>
+                <QuoteSource quote={item.platforms?.[0]} />
                 <div className="flex justify-between mt-4 border-t border-[var(--border-default)] pt-3">
                   <button
-                    className="text-xs text-[var(--accent)] flex items-center gap-2"
+                    className="text-xs text-[var(--accent)] flex items-center gap-2 min-h-[40px]"
                     onClick={() => navigate(`/item/${item.item_id}`)}
                   >
                     查看研究
@@ -108,13 +110,13 @@ export default function Watchlist() {
                   </button>
                   <button
                     onClick={() => toggle(item.item_id)}
-                    className="text-[var(--text-dim)] p-1"
+                    className="text-[var(--text-dim)] p-2 min-h-[40px] min-w-[40px]"
                     aria-label={`移除${item.item_name}`}
                   >
                     <Trash size={16} />
                   </button>
                 </div>
-              </div>
+              </div></>}
             </article>
           ))}
         </div>

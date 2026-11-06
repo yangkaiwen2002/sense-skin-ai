@@ -49,7 +49,7 @@ export function buildResearchBrief(overview, decision) {
     signals,
     next,
     caveat:
-      "根据当前已载入的数据按规则汇总，包含示例与估算价格；不是实时验证报价或收益预测。",
+      "按已载入数据汇总；采集报价、演示数据和历史未核验数据以页面来源标签为准，不保证成交或收益。",
   };
 }
 export function briefText(brief) {

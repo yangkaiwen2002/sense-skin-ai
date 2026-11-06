@@ -21,7 +21,7 @@ def overview(item_id: int, db: Session = Depends(get_db)):
 def history(
     item_id: int,
     platform: str | None = Query(None),
-    days: int = Query(30),
+    days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
 ):
     return get_price_history(db, item_id, platform, days)

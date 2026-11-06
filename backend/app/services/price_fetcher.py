@@ -1,6 +1,6 @@
 """
 Fetches real-time CS2 prices from Steam Community Market (public API, no auth required).
-BUFF / 悠悠有品 / IGXE prices are estimated from Steam using historical ratios.
+Only observed quotes are stored. BUFF requires a configured cookie and exact goods mapping.
 """
 
 import re
@@ -13,26 +13,12 @@ from app.models.item import Item
 from app.models.platform import Platform
 from app.models.price_snapshot import PriceSnapshot
 
-# Steam Market hash names for seeded items (by item_id)
-STEAM_HASH_NAMES: dict[int, str] = {
-    1: "AK-47 | Redline (Field-Tested)",
-    2: "Karambit | Doppler (Factory New)",
-    3: "M4A1-S | Printstream (Factory New)",
-    4: "AWP | Dragon Lore (Field-Tested)",
-    5: "M4A4 | Howl (Field-Tested)",
-    6: "Butterfly Knife | Fade (Factory New)",
-    7: "Desert Eagle | Blaze (Factory New)",
-    8: "Glock-18 | Fade (Factory New)",
-}
+from app.config import settings
+from data_sources.item_catalog import MARKET_NAMES
+from data_sources.buff_client import fetch_buff_goods_info
+from app.services.market_data import valid_price
 
-# Multipliers relative to Steam price (Steam = 1.0)
-# BUFF is typically ~9% cheaper than Steam; 悠悠有品 / IGXE sit between
-PLATFORM_MULTIPLIERS: dict[str, float] = {
-    "Steam":   1.00,
-    "BUFF":    0.909,
-    "悠悠有品": 0.936,
-    "IGXE":   0.927,
-}
+_refresh_lock = asyncio.Lock()
 
 
 def _parse_price(s: str | None) -> float | None:
@@ -71,6 +57,8 @@ async def _fetch_one(client: httpx.AsyncClient, item_id: int, hash_name: str) ->
                 },
                 timeout=12.0,
             )
+            if r.status_code in (401, 403, 429):
+                return None
             if r.status_code != 200:
                 continue
             data = r.json()
@@ -91,76 +79,92 @@ async def _fetch_one(client: httpx.AsyncClient, item_id: int, hash_name: str) ->
 
 
 async def refresh_all_prices(db: Session) -> dict:
-    items = db.query(Item).all()
+    if _refresh_lock.locked():
+        return {"status": "busy", "message": "行情刷新已在进行中"}
+    async with _refresh_lock:
+        try:
+            return await _refresh(db)
+        except Exception:
+            db.rollback()
+            raise
+
+
+async def refresh_item_prices(db: Session, item_ids: list[int]) -> dict:
+    """Reuse verified ingestion for an explicitly selected research scope."""
+    if _refresh_lock.locked():
+        return {"status": "busy", "message": "行情刷新已在进行中"}
+    async with _refresh_lock:
+        try:
+            return await _refresh(db, item_ids)
+        except BaseException:
+            db.rollback()
+            raise
+
+
+async def _refresh(db: Session, item_ids: list[int] | None = None) -> dict:
+    query = db.query(Item)
+    if item_ids is not None:
+        query = query.filter(Item.id.in_(item_ids))
+    items = query.all()
     if not items:
-        return {"status": "error", "message": "数据库无饰品，请先调用 /api/seed 初始化"}
-
-    platforms: dict[str, Platform] = {p.name: p for p in db.query(Platform).all()}
-    if not platforms:
-        return {"status": "error", "message": "数据库无平台数据，请先调用 /api/seed 初始化"}
-
-    now = datetime.utcnow()
-    fetched, failed, detail = 0, 0, []
-
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        )
-    }
-
-    async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
+        return {"status": "error", "message": "数据库无饰品，请先初始化示例目录"}
+    platforms = {p.name: p for p in db.query(Platform).all()}
+    for name in ("Steam", "BUFF"):
+        if name not in platforms:
+            platform = Platform(name=name, supports_rental=False)
+            db.add(platform)
+            db.flush()
+            platforms[name] = platform
+    fetched, failed, skipped, details = 0, 0, 0, []
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         for item in items:
-            hash_name = STEAM_HASH_NAMES.get(item.id)
+            hash_name = MARKET_NAMES.get(item.item_name)
             if not hash_name:
-                failed += 1
-                detail.append({"id": item.id, "name": item.item_name, "status": "no_hash_name"})
+                skipped += 1
+                details.append({"id": item.id, "source": "catalog", "status": "unmapped_identity"})
                 continue
-
             result = await _fetch_one(client, item.id, hash_name)
-
-            if not result or not result["price"]:
-                failed += 1
-                detail.append({"id": item.id, "name": item.item_name, "status": "fetch_failed"})
-            else:
-                steam_price = result["price"]
-
-                for pname, platform in platforms.items():
-                    mult = PLATFORM_MULTIPLIERS.get(pname, 1.0)
-                    listing   = round(steam_price * mult, 2)
-                    buy_order = round(listing * 0.96, 2)
-                    spread    = round(listing - buy_order, 2)
-
-                    db.add(PriceSnapshot(
-                        item_id=item.id,
-                        platform_id=platform.id,
-                        snapshot_time=now,
-                        listing_price=listing,
-                        buy_order_price=buy_order,
-                        avg_price_24h=round((listing + buy_order) / 2, 2),
-                        volume_24h=result["volume"] if pname == "Steam" else None,
-                        liquidity_depth=None,
-                        spread=spread,
-                        currency="CNY",
-                    ))
-
+            if result:
+                db.add(PriceSnapshot(
+                    item_id=item.id, platform_id=platforms["Steam"].id,
+                    snapshot_time=datetime.utcnow(), listing_price=result["price"],
+                    volume_24h=result["volume"], currency="CNY",
+                    source="steam_market", price_kind="observed", source_item_id=hash_name,
+                    # priceoverview provides neither buy orders nor a 24h mean.
+                ))
                 fetched += 1
-                detail.append({
-                    "id": item.id,
-                    "name": item.item_name,
-                    "status": "ok",
-                    "steam_price": steam_price,
-                })
-
-            # Steam rate-limit: max ~20 req/min → 1 req per 1.5s
-            await asyncio.sleep(1.5)
-
+                details.append({"id": item.id, "source": "Steam", "status": "ok"})
+            else:
+                failed += 1
+                details.append({"id": item.id, "source": "Steam", "status": "fetch_failed"})
+            goods_id = settings.BUFF_GOODS_IDS.get(hash_name)
+            if settings.BUFF_COOKIE and goods_id:
+                try:
+                    buff = await asyncio.to_thread(fetch_buff_goods_info, goods_id)
+                except Exception:
+                    buff = {"ok": False}
+                price = buff.get("sell_min_price")
+                if buff.get("ok") and buff.get("name") == hash_name and valid_price(price):
+                    bid = buff.get("buy_max_price")
+                    bid = bid if valid_price(bid) else None
+                    db.add(PriceSnapshot(
+                        item_id=item.id, platform_id=platforms["BUFF"].id,
+                        snapshot_time=datetime.utcnow(), listing_price=price,
+                        buy_order_price=bid, spread=round(price - bid, 2) if bid is not None else None,
+                        liquidity_depth=buff.get("sell_num"), currency="CNY",
+                        source="buff_market", price_kind="observed", source_item_id=str(goods_id),
+                    ))
+                    fetched += 1
+                    details.append({"id": item.id, "source": "BUFF", "status": "ok"})
+                else:
+                    failed += 1
+                    details.append({"id": item.id, "source": "BUFF", "status": "fetch_failed_or_identity_mismatch"})
+            await asyncio.sleep(3)
     db.commit()
     return {
-        "status": "success",
-        "fetched": fetched,
-        "failed": failed,
-        "source": "Steam Community Market (CNY)",
-        "items": detail,
+        "status": "success" if fetched and not failed else "partial" if fetched else "error",
+        "fetched": fetched, "failed": failed, "skipped": skipped,
+        "source": "Observed Steam / configured BUFF quotes (CNY)",
+        "buff_status": "configured" if settings.BUFF_COOKIE and settings.BUFF_GOODS_IDS else "not_configured",
+        "items": details,
     }

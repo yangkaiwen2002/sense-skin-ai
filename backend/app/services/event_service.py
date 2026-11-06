@@ -38,10 +38,13 @@ def get_events_for_item(db: Session, item_id: int, days: int = 30) -> list[Event
                 summary=e.summary,
                 impact_scope=e.impact_scope,
                 region=e.region,
-                tags=tags,
+                tags=tags + ["本地事件（来源未核验）"],
+                source=e.source,
             )
         )
-    return result
+    from app.services.news_ingestion import get_news
+    result.extend(EventSchema(**news) for news in get_news(db, days))
+    return sorted(result, key=lambda e: e.event_date, reverse=True)
 
 
 def get_event_aware_analysis(db: Session, item_id: int) -> EventAwareAnalysis:

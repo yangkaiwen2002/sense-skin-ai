@@ -65,16 +65,10 @@ export function ScoreRing({ score, size = 100, variant = 'ring', showLabel = tru
   return (
     <div className={`flex flex-col items-center gap-1.5 shrink-0 ${className}`}>
       <div className="relative" style={{ width: size, height: size }}>
-        {variant !== 'badge' && (
-          <div
-            className="absolute pointer-events-none rounded-full"
-            style={{ inset: -8, background: `radial-gradient(circle, ${c}22 0%, transparent 70%)` }}
-          />
-        )}
         <svg width={size} height={size} className="block -rotate-90">
           <circle
             cx={size / 2} cy={size / 2} r={r} fill="none"
-            stroke={variant === 'badge' ? 'rgba(0,0,0,0.55)' : 'var(--border-default)'}
+            stroke="var(--border-default)"
             strokeWidth={stroke}
           />
           <circle
@@ -110,7 +104,7 @@ export function ScoreDot({ score, size = 8 }) {
   return (
     <span
       className="inline-block rounded-full shrink-0"
-      style={{ width: size, height: size, background: c, boxShadow: `0 0 6px ${c}80` }}
+      style={{ width: size, height: size, background: c }}
     />
   )
 }
@@ -127,10 +121,10 @@ export function ScoreBar({ label, value, note }) {
           <span className="text-xs font-bold font-tabular" style={{ color: c }}>{value}</span>
         </div>
       </div>
-      <div className="h-[3px] rounded-full bg-white/[0.07] overflow-hidden">
+      <div className="h-[3px] rounded-full bg-[var(--bg-surface-raised)] overflow-hidden">
         <div
           className="score-bar-fill h-full rounded-full"
-          style={{ width: `${value}%`, background: `linear-gradient(90deg, ${c}80, ${c})` }}
+          style={{ width: `${value}%`, background: c }}
         />
       </div>
     </div>

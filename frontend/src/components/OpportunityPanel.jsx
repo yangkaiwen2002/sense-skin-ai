@@ -58,7 +58,7 @@ function OpportunityCard({ opp }) {
           </p>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[9px] text-[var(--text-dim)] mb-0.5">BUFF</p>
+              <p className="text-[9px] text-[var(--text-dim)] mb-0.5">参考报价</p>
               <p className="price-display text-[15px]">
                 {opp.current_price != null ? formatCNY(opp.current_price) : '—'}
               </p>
@@ -122,7 +122,7 @@ export default function OpportunityPanel({ opportunities, loading }) {
           ? items.map(opp => <OpportunityCard key={opp.item_id} opp={opp} />)
           : (
             <div className="surface-card px-8 py-6 text-[var(--text-dim)] text-sm">
-              暂未发现明显机会，市场整体处于均衡区间
+              暂无可用的机会信号，可能是数据不足或尚未满足筛选条件。
             </div>
           )
       }

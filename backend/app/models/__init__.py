@@ -14,3 +14,6 @@ __all__ = [
     "EventTag",
     "AIReport",
 ]
+
+from app.models.source_news import SourceNews
+from app.models.research import ResearchSession, ResearchRun
