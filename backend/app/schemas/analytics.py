@@ -6,6 +6,11 @@ class PlatformAnalytics(BaseModel):
     platform: str
     platform_id: int
     current_price: float | None = None
+    snapshot_time: datetime | None = None
+    is_stale: bool = False
+    source: str = "unknown"
+    price_kind: str = "legacy_unknown"
+    observed_days_30d: int = 0
     avg_7d: float | None = None
     avg_30d: float | None = None
     return_7d: float | None = None

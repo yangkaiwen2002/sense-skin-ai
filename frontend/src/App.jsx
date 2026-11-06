@@ -6,6 +6,7 @@ const ItemDetail = lazy(() => import("./pages/ItemDetail"));
 const Compare = lazy(() => import("./pages/Compare"));
 const RentVsBuy = lazy(() => import("./pages/RentVsBuy"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
+const Research = lazy(() => import("./pages/Research"));
 
 function ScrollReset() {
   const { pathname } = useLocation();
@@ -37,6 +38,8 @@ export default function App() {
           >
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/research" element={<Research />} />
+              <Route path="/research/:sessionId" element={<Research />} />
               <Route path="/item/:itemId" element={<ItemDetail />} />
               <Route path="/compare/:itemId" element={<Compare />} />
               <Route path="/rent-vs-buy" element={<RentVsBuy />} />

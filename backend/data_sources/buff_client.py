@@ -7,30 +7,23 @@ Reads credentials from .env (never hardcoded):
     BUFF_REFERER      — referer header (optional, has default)
 """
 
-import os
 import time
 import random
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
+from app.config import settings
 
 _BASE = "https://buff.163.com"
 
 
 def _headers() -> dict[str, str]:
     return {
-        "Cookie":          os.getenv("BUFF_COOKIE", ""),
-        "User-Agent":      os.getenv(
-            "BUFF_USER_AGENT",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        ),
-        "Referer":         os.getenv("BUFF_REFERER", "https://buff.163.com/market/"),
+        "Cookie": settings.BUFF_COOKIE,
+        "User-Agent": settings.BUFF_USER_AGENT,
+        "Referer": settings.BUFF_REFERER,
         "X-Requested-With": "XMLHttpRequest",
-        "Accept":          "application/json, text/javascript, */*; q=0.01",
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Accept": "application/json",
     }
+
 
 
 def _sleep():

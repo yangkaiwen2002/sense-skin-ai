@@ -26,10 +26,12 @@ export const WEAPON_ABBR = {
 }
 
 export const RISK_COLORS = {
-  'High Volatility': { bg: 'bg-red-900/40', border: 'border-red-700/60', text: 'text-red-300', dot: 'bg-red-400' },
-  'Low Liquidity': { bg: 'bg-orange-900/40', border: 'border-orange-700/60', text: 'text-orange-300', dot: 'bg-orange-400' },
-  'Potential Overheat': { bg: 'bg-yellow-900/40', border: 'border-yellow-700/60', text: 'text-yellow-300', dot: 'bg-yellow-400' },
-  'Stable': { bg: 'bg-green-900/40', border: 'border-green-700/60', text: 'text-green-300', dot: 'bg-green-400' },
+  '报价超过24小时未更新': { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-400' },
+  'Unknown': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', dot: 'bg-slate-400' },
+  'High Volatility': { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-400' },
+  'Low Liquidity': { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', dot: 'bg-orange-400' },
+  'Potential Overheat': { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', dot: 'bg-yellow-400' },
+  'Stable': { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-800', dot: 'bg-green-400' },
 }
 
 export const RISK_LABELS_ZH = {
@@ -59,9 +61,10 @@ export const EVENT_TYPE_LABELS = {
 // Event-type accents, kept out of the purple family (purple is reserved
 // for nothing here — CS2 rarity "restricted" already owns that hue).
 export const EVENT_TYPE_COLORS = {
-  game_update: { dot: 'bg-red-400', text: 'text-red-300', bg: 'bg-red-900/20 border-red-800/40' },
-  major_event: { dot: 'bg-blue-400', text: 'text-blue-300', bg: 'bg-blue-900/20 border-blue-800/40' },
-  tournament: { dot: 'bg-amber-400', text: 'text-amber-300', bg: 'bg-amber-900/20 border-amber-800/40' },
-  holiday: { dot: 'bg-green-400', text: 'text-green-300', bg: 'bg-green-900/20 border-green-800/40' },
-  platform_promo: { dot: 'bg-slate-400', text: 'text-slate-300', bg: 'bg-slate-800/40 border-slate-700/50' },
+  official_news: { dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+  game_update: { dot: 'bg-red-400', text: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+  major_event: { dot: 'bg-blue-400', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+  tournament: { dot: 'bg-amber-400', text: 'text-amber-800', bg: 'bg-amber-50 border-amber-200' },
+  holiday: { dot: 'bg-green-400', text: 'text-green-800', bg: 'bg-green-50 border-green-200' },
+  platform_promo: { dot: 'bg-slate-400', text: 'text-slate-700', bg: 'bg-slate-50 border-slate-200' },
 }

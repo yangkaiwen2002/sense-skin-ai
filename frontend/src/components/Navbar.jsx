@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
-import { ChartLineUp, Star, Calculator } from "@phosphor-icons/react";
+import { ChartLineUp, Star, Calculator, Sparkle } from "@phosphor-icons/react";
 const links = [
+  { to: "/research", label: "AI 研究", icon: Sparkle },
   { to: "/", label: "饰品市场", icon: ChartLineUp },
   { to: "/rent-vs-buy", label: "租买计算", icon: Calculator },
   { to: "/watchlist", label: "我的自选", icon: Star },
@@ -22,8 +23,8 @@ export default function Navbar() {
             <Link
               key={to}
               to={to}
-              className={pathname === to ? "active" : ""}
-              aria-current={pathname === to ? "page" : undefined}
+              className={pathname === to || (to === '/research' && pathname.startsWith('/research/')) ? "active" : ""}
+              aria-current={pathname === to || (to === '/research' && pathname.startsWith('/research/')) ? "page" : undefined}
             >
               <Icon size={18} />
               {label}

@@ -2,8 +2,8 @@ import { forwardRef } from 'react'
 
 const VARIANTS = {
   primary: 'bg-[var(--accent)] text-white border border-transparent hover:bg-[var(--accent-strong)]',
-  secondary: 'bg-white/[0.06] text-[var(--text-primary)] border border-[var(--border-default)] hover:bg-white/[0.10] hover:border-[var(--border-strong)]',
-  ghost: 'bg-transparent text-[var(--text-secondary)] border border-transparent hover:text-[var(--text-primary)] hover:bg-white/[0.05]',
+  secondary: 'bg-[var(--bg-surface-raised)] text-[var(--text-primary)] border border-[var(--border-default)] hover:bg-[var(--bg-surface-sunken)] hover:border-[var(--border-strong)]',
+  ghost: 'bg-transparent text-[var(--text-secondary)] border border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-sunken)]',
   gold: 'bg-[var(--gold-soft)] text-[var(--gold-strong)] border border-[var(--gold-border)] hover:bg-[var(--gold-soft)] hover:border-[var(--gold)]',
 }
 
@@ -19,11 +19,13 @@ const Button = forwardRef(function Button(
   return (
     <button
       ref={ref}
+      type="button"
+      aria-busy={loading || undefined}
       disabled={disabled || loading}
       className={`inline-flex items-center justify-center font-semibold whitespace-nowrap
         transition-[transform,background-color,border-color,opacity] duration-150 ease-standard
-        active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
-        min-h-[36px] ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+        active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
+        min-h-[40px] ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...props}
     >
       {loading ? (

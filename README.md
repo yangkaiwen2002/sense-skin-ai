@@ -181,13 +181,13 @@ frontend/src/
 
 ![Marketplace preview](docs/screenshots/marketplace.jpg)
 
-[Mobile screenshot](docs/screenshots/mobile.jpg)
+[Research workspace](docs/screenshots/research.jpg) · [Item detail](docs/screenshots/detail.jpg) · [Mobile workspace](docs/screenshots/mobile.jpg)
 
 
 - A responsive marketplace with light surfaces, Steam-hosted item artwork, weapon/exterior filters, price sorting, accessible navigation, and consistent detail pages.
 - Persistent browser-local watchlists: add/remove items from detail pages and revisit saved items with refreshed backend quotes.
 - **Local research briefs** combine loaded platform prices, rule scores, positive/negative evidence and follow-up checks. Export a plain-text brief without an external AI call. Missing data stays explicitly missing.
-- Ask Sense exposes expandable source passages before generated text. **Find sources** works without an API key; **Synthesize** falls back to source reading when no key is configured.
+- The **AI 研究** workspace unifies item research, platform comparison, rent/buy and knowledge Q&A. Conversations, tool steps, sources and exportable results persist on the backend. Without a configured model it explicitly produces evidence records only.
 - A failed generation keeps its evidence visible. Request cancellation and SSE parsing handle fragmented UTF-8, premature disconnects, and stale request completion.
 - Dashboard cards no longer present an unrelated approximation as the seven-dimensional backend score. Rule signal strength is explicitly not a probability of returns.
 - Routes are lazy-loaded so detail-page charts do not ship with the initial market page.
@@ -212,9 +212,9 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. Use **初始化示例数据** for the local market demo, or search the knowledge base immediately with **查找来源**. The seed data is synthetic/illustrative, not a live performance record. Steam refresh may estimate other platforms using fixed multipliers.
+Open `http://localhost:5173`. Use **初始化示例数据** for the local market demo, or open **AI 研究 → 知识问答** to search the knowledge base without initializing items. The seed data is synthetic/illustrative, not a live performance record. Existing histories may contain legacy estimates; new refreshes store observed quotes only (see integration details below).
 
-To enable generated answers, set `CLAUDE_API_KEY` in the backend `.env`. To enable actual semantic retrieval, install `faiss-cpu sentence-transformers` and set `RAG_ENABLE_FAISS=true`; first use can download the embedding model. Knowledge entries contain unverified historical numerical claims and must not be treated as current prices.
+To enable generated answers in the research workspace, configure `AI_PROVIDER`, `AI_API_KEY` and `AI_MODEL` in the backend `.env` (see [model setup](#connect-a-model)); the existing `CLAUDE_API_KEY` remains a fallback. To enable actual semantic retrieval, install `faiss-cpu sentence-transformers` and set `RAG_ENABLE_FAISS=true`; first use can download the embedding model. Knowledge entries contain unverified historical numerical claims and must not be treated as current prices.
 
 ```bash
 # Standalone evidence API; no generation cost
@@ -260,3 +260,98 @@ Artwork sources and limitations: [THIRD_PARTY.md](THIRD_PARTY.md).
 - **Explainability by default.** The `supporting_signals` array in every decision response is a complete audit trail — every point is attributed to a specific signal with a direction and magnitude.
 - **AI as synthesis layer.** Claude receives structured decision output as grounded context. It explains and elaborates; it does not compute.
 - **Performance-conscious.** Events load once per scan with a 5-minute TTL cache. `map_events_to_item` is pure Python with no I/O.
+
+## Observed market data integration
+
+The refresh pipeline now stores **only observed Steam quotes and explicitly configured BUFF quotes**. It no longer creates other platforms' prices, buy orders, or 24h averages from fixed multipliers. Existing histories are retained with `price_kind=legacy_unknown`; new seeds use `demo`, and live ingestions use `observed`, with source identity and collection time.
+
+- Exact market names in `backend/data_sources/item_catalog.py` replace database-ID matching. The conservative catalog currently maps 15 of 31 seeded items. Unmapped items are reported as skipped; verify weapon, finish, exterior, StatTrak/souvenir and knife prefix before adding entries.
+- Once an item has observed quotes, demo platforms are excluded from its comparison. Daily analytics also stay within one platform, source and data kind; new live data cannot borrow synthetic historical returns. Seven-day returns require both daily endpoints. Daily averages use the last quote per UTC date, not the last N polls. Missing days stay missing.
+- Quotes older than 24 hours are flagged, and scoring refuses stale reference quotes. Listed prices are observations, not guaranteed executable trades. The remaining local rental history is demo data.
+- The additive startup upgrade adds provenance columns to old databases without relabeling their contents. Start one backend worker during this upgrade; a versioned migration runner is still needed for multi-worker production deployments.
+
+### Steam prices
+
+Start the backend as above, initialize the demo catalog if empty, then click **刷新价格** or call:
+
+```bash
+curl -X POST http://localhost:8000/api/refresh-prices
+```
+
+This uses the existing public Community Market `priceoverview` route, without a key. It is not a guaranteed market-data service: availability, item coverage and throttling can prevent a quote. The response distinguishes successful, failed and unmapped records. Automatic polling is opt-in via `ENABLE_MARKET_SYNC=true`; the single-process scheduler runs every 15 minutes. The process-level refresh guard and manual endpoint rate limits do not replace a distributed job queue.
+
+### BUFF prices
+
+The current adapter uses BUFF's website session routes, **not a verified official price API contract**. It is implemented but requires a working user session and identity mapping; cookie expiry or changed response formats can stop it.
+
+1. Put your own valid `BUFF_COOKIE` in the backend `.env` locally. Do not put it in frontend variables or commit it.
+2. Use `GET /api/buff/search?q=...` to locate a goods ID, then `GET /api/buff/goods-info?goods_id=...` to verify the returned English `name` matches the canonical Steam hash name exactly.
+3. Set `BUFF_GOODS_IDS` to a JSON object mapping that exact English name to its numeric goods ID. The template defaults to `{}` and therefore disables BUFF ingestion.
+4. Restart the backend and refresh prices. A mismatched identity is rejected before any snapshot is written. Inspect `buff_status` and per-item results; configuration alone does not prove live access.
+
+悠悠有品 and IGXE still need independently verified source adapters or an authorized data-provider contract. No live integration is claimed for either platform. Actual rental prices, deposits and availability also remain unconnected.
+
+### Official CS2 events
+
+The [official Steam ISteamNews API](https://partner.steamgames.com/doc/webapi/ISteamNews) documents `GetNewsForApp/v2/`; its public method does not require the publisher key used by `GetNewsForAppAuthed`.
+
+```bash
+curl -X POST http://localhost:8000/api/refresh-events
+curl http://localhost:8000/api/market/news
+```
+
+The home page has a **同步官方新闻** button. The connector requests app 730's `steam_community_announcements` feed, stores announcements by stable Steam ID, and exposes publication time, collection time and the source link. Repeated syncs update existing records, and network failures preserve previously collected news. News is also visible on item event timelines, explicitly labeled as global context with impact pending evaluation.
+
+Official announcements do **not** automatically become bullish/bearish scores. The existing curated event-scoring pipeline remains separate until item relevance, impact direction and evaluation rules are established. Automated HLTV tournament ingestion is still absent.
+
+### Rent/buy assumptions
+
+The comparison now honors the upfront budget and available rental stock. Unknown deposits stay unknown. Weekly rentals use whole-week blocks plus available daily pricing; fractional-week billing is not assumed. `expected_resale_loss_pct` describes a scenario for the requested holding period, not a weekly loss prediction. Platform fees and future price movements are not modeled.
+
+## AI research workspace
+
+Open **AI 研究** (`/research`), or carry an item into research from its detail page. The workspace follows the useful Nexus interaction patterns: persistent conversations, visible tool execution, inspectable sources, and saved output. It runs a bounded research workflow over this repository's services; it is not an autonomous agent that invents or executes arbitrary tools.
+
+1. Select up to three items and choose market research, platform comparison, rent/buy, or knowledge Q&A.
+2. Submit a question. With refresh enabled, the backend refreshes only selected items lacking an observed quote in the last five minutes, reads official announcements (15-minute cache), loads platform comparisons and optional rental calculations, and searches the local knowledge base.
+3. Actual tool starts, outcomes and source records stream to the UI. Source failures preserve other evidence. A configured model receives the current evidence plus the last four completed conversation turns and generates a cited answer.
+4. Each run saves its question, scope, parameters, steps, sources and answer. Reopen its session URL to continue; download a completed record as Markdown. Failed/cancelled runs retain received evidence/text and can be retried with their original scope and parameters.
+
+### Connect a model
+
+Copy `backend/.env.example` to `backend/.env` if it does not already exist, and set these variables on the backend only:
+
+```dotenv
+AI_PROVIDER=anthropic
+AI_API_KEY=your_key
+AI_MODEL=your_enabled_model_id
+AI_BASE_URL=
+```
+
+For an OpenAI-compatible gateway, set `AI_PROVIDER=openai`, its enabled model ID, and `AI_BASE_URL=https://your-gateway.example/v1` (or the gateway's documented base path). The adapter appends `/chat/completions`; it requires streaming Chat Completions support. Anthropic gateways must support native Messages streaming. Keys never belong in `VITE_*` variables. Restart the backend after changing configuration. Existing `CLAUDE_API_KEY` remains a fallback for the research adapter and is still used by the legacy chat/report endpoints.
+
+Without a key and model, the workspace explicitly runs in **证据模式** and produces a deterministic evidence record, not an AI conclusion. “模型已配置” means configuration is present, not that a paid upstream call has succeeded. Incomplete model streams fail the run and do not produce a completed report.
+
+### Research API and operational limits
+
+- `GET /api/research/status`: model configuration and source capabilities, without credentials.
+- `GET/POST /api/research/sessions`: list/create local sessions.
+- `GET /api/research/sessions/{id}`: restore context, runs and latest tool states.
+- `POST /api/research/sessions/{id}/runs`: SSE (`run`, `step`, `sources`, `text`, `notice`, `error`, `completed`, then `[DONE]`). Send a UUID `request_id`; a completed duplicate is replayed rather than re-executed.
+- `GET /api/research/runs/{id}/artifact`: download a completed Markdown record.
+
+A session allows one active run, reserved atomically in the database. Runs have a 240-second deadline, selected-item limits and rate limits. Disconnect/stop cancels execution and preserves progress. This is not a background job queue: a browser refresh may interrupt the active run. A killed worker's abandoned session lease is recovered after ten minutes. SQLite tables are created additively on startup. This local prototype has no user isolation/authentication; do not publish its session API as a multi-user service without adding those controls.
+
+Steam quote access and news access still depend on upstream availability. BUFF requires separate credentials and exact mapping; rental/deposit data is not live. FAISS is optional; the default lexical retrieval path uses BM25 and character TF-IDF. Source cards retain provenance and time, and global announcements do not imply a measured item-price impact.
+
+### Validation
+
+```bash
+cd backend
+.venv/bin/python -m pytest tests/test_market_pipeline.py tests/test_research_workflow.py -q
+cd ../frontend
+npm test
+npm run build
+```
+
+Research regressions cover persisted replay/export, scope validation, active-run conflicts, cancellation and abandoned leases, source degradation, selected-item refresh, rental budgets, conversation history, and incomplete model streams. Model HTTP fixtures are test-only; they do not stand in for a verified live model connection.

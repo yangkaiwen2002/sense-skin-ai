@@ -26,7 +26,7 @@ export default function ResearchBrief({ overview, decision, loading }) {
             研究简报
           </h2>
           <p className="text-[11px] text-[var(--text-secondary)] mt-1">
-            行情汇总 → 信号依据 → 后续关注 · 无需 AI 密钥
+            行情汇总 · 信号依据 · 后续关注
           </p>
         </div>
         <Button size="sm" onClick={download} disabled={loading}>

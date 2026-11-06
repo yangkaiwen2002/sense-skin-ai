@@ -46,18 +46,13 @@ def _opportunity_tier(total: int, valuation: str, trend: int, rec: str) -> tuple
 
 
 def _get_current_price(db: Session, item_id: int, buff_id: int | None) -> float | None:
-    if buff_id is None:
-        return None
-    snap = (
-        db.query(PriceSnapshot)
-        .filter(
-            PriceSnapshot.item_id == item_id,
-            PriceSnapshot.platform_id == buff_id,
-        )
-        .order_by(PriceSnapshot.snapshot_time.desc())
-        .first()
-    )
-    return snap.listing_price if snap else None
+    from app.services.market_data import latest_quotes
+    from datetime import datetime, timedelta
+    quotes = [s for s in latest_quotes(db, item_id)
+              if datetime.utcnow() - s.snapshot_time <= timedelta(hours=24)]
+    reference = min(quotes, key=lambda s: (s.platform.name != "BUFF", s.platform_id), default=None)
+    return reference.listing_price if reference else None
+
 
 
 # ── public entry point ───────────────────────────────────────────────────────

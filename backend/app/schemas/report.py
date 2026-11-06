@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 class EventSchema(BaseModel):
-    id: int
+    id: int | str
     event_date: str
     event_type: str
     title: str
@@ -11,6 +11,9 @@ class EventSchema(BaseModel):
     impact_scope: str | None = None
     region: str | None = None
     tags: list[str] = []
+    source: str | None = None
+    source_url: str | None = None
+    fetched_at: str | None = None
 
     model_config = {"from_attributes": True}
 

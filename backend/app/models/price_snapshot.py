@@ -19,6 +19,9 @@ class PriceSnapshot(Base):
     volume_24h: Mapped[int | None] = mapped_column(Integer)
     liquidity_depth: Mapped[int | None] = mapped_column(Integer)
     spread: Mapped[float | None] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String, default="unknown", server_default="unknown")
+    price_kind: Mapped[str] = mapped_column(String, default="legacy_unknown", server_default="legacy_unknown")
+    source_item_id: Mapped[str | None] = mapped_column(String)
     currency: Mapped[str] = mapped_column(String, default="CNY")
 
     item: Mapped["Item"] = relationship("Item", back_populates="price_snapshots")

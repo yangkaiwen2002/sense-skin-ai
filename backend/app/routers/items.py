@@ -1,33 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.database import get_db
-from app.schemas.item import ItemSearch, ItemBase
 from app.services.item_service import search_items, list_items
-from app.models.price_snapshot import PriceSnapshot
-from app.models.platform import Platform
+from app.services.market_data import best_quote
 
 router = APIRouter(prefix="/items", tags=["items"])
 
 
 @router.get("")
-def get_items(limit: int = 50, db: Session = Depends(get_db)):
+def get_items(limit: int = Query(50, ge=1, le=500), db: Session = Depends(get_db)):
     """Return all items with their latest best price."""
     items = list_items(db, limit=limit)
 
     # For each item, get the latest price snapshot across all platforms
     result = []
     for item in items:
-        # Latest snapshot for this item (any platform), ordered by time desc
-        row = (
-            db.query(PriceSnapshot, Platform.name)
-            .join(Platform, PriceSnapshot.platform_id == Platform.id)
-            .filter(PriceSnapshot.item_id == item.id)
-            .order_by(PriceSnapshot.snapshot_time.desc())
-            .first()
-        )
-        latest, platform_name = (row[0], row[1]) if row else (None, None)
+        latest = best_quote(db, item.id)
+        platform_name = latest.platform.name if latest else None
         result.append({
             "id": item.id,
             "item_name": item.item_name,
@@ -40,6 +31,10 @@ def get_items(limit: int = 50, db: Session = Depends(get_db)):
             "icon_url": item.icon_url,
             "current_price": latest.listing_price if latest else None,
             "platform": platform_name,
+            "snapshot_time": latest.snapshot_time if latest else None,
+            "source": latest.source if latest else None,
+            "price_kind": latest.price_kind if latest else None,
+            "is_stale": bool(latest and datetime.utcnow() - latest.snapshot_time > timedelta(hours=24)),
         })
     return result
 
@@ -53,14 +48,8 @@ def search(q: str = "", db: Session = Depends(get_db)):
 
     result = []
     for item in items:
-        row = (
-            db.query(PriceSnapshot, Platform.name)
-            .join(Platform, PriceSnapshot.platform_id == Platform.id)
-            .filter(PriceSnapshot.item_id == item.id)
-            .order_by(PriceSnapshot.snapshot_time.desc())
-            .first()
-        )
-        latest, platform_name = (row[0], row[1]) if row else (None, None)
+        latest = best_quote(db, item.id)
+        platform_name = latest.platform.name if latest else None
         result.append({
             "id": item.id,
             "item_name": item.item_name,
@@ -72,5 +61,9 @@ def search(q: str = "", db: Session = Depends(get_db)):
             "icon_url": item.icon_url,
             "current_price": latest.listing_price if latest else None,
             "platform": platform_name,
+            "snapshot_time": latest.snapshot_time if latest else None,
+            "source": latest.source if latest else None,
+            "price_kind": latest.price_kind if latest else None,
+            "is_stale": bool(latest and datetime.utcnow() - latest.snapshot_time > timedelta(hours=24)),
         })
     return result

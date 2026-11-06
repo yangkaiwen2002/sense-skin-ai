@@ -37,3 +37,6 @@ export const getItemDecision  = (id)          => request(`/items/${id}/decision`
 export const getOpportunities = (limit = 8)   => request(`/opportunities?limit=${limit}`)
 export const getMarketSummary = ()            => request('/market-summary')
 export const getMarketEvents  = ()            => request('/market/events')
+
+export const getMarketNews = () => request('/market/news')
+export const refreshEvents = () => request('/refresh-events', { method: 'POST' })

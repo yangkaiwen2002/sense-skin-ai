@@ -1,142 +1,57 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { MagnifyingGlass, CaretRight } from '@phosphor-icons/react'
-import { getItemCompare, getItemOverview, searchItems } from '../services/api'
+import { CaretRight, ArrowsLeftRight } from '@phosphor-icons/react'
+import { getItemCompare, getItemOverview } from '../services/api'
+import SearchBar from '../components/SearchBar'
+import QuoteSource from '../components/QuoteSource'
 import PlatformComparisonTable from '../components/PlatformComparisonTable'
 import EmptyState from '../components/ui/EmptyState'
+import ErrorState from '../components/ui/ErrorState'
+import Skeleton from '../components/ui/Skeleton'
+import Button from '../components/ui/Button'
 import { formatCNY } from '../utils/formatters'
 import { PLATFORM_COLORS } from '../utils/constants'
 
 export default function Compare() {
   const { itemId } = useParams()
   const navigate = useNavigate()
-
-  const [compare, setCompare] = useState(null)
-  const [item, setItem] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [suggestions, setSuggestions] = useState([])
-
+  const [compare, setCompare] = useState(null), [item, setItem] = useState(null)
+  const [loading, setLoading] = useState(true), [failed, setFailed] = useState(false), [reload, setReload] = useState(0)
   useEffect(() => {
-    if (itemId) load(Number(itemId))
-  }, [itemId])
-
-  useEffect(() => {
-    if (!searchQuery.trim()) { setSuggestions([]); return }
-    const t = setTimeout(async () => {
-      const res = await searchItems(searchQuery)
-      setSuggestions(res?.items || res || [])
-    }, 300)
-    return () => clearTimeout(t)
-  }, [searchQuery])
-
-  async function load(id) {
-    setLoading(true)
-    const [cmp, ov] = await Promise.all([getItemCompare(id), getItemOverview(id)])
-    setCompare(cmp)
-    setItem(ov?.item || ov || null)
-    setLoading(false)
-  }
-
-  const maxPrice = compare?.platforms?.reduce((m, p) => Math.max(m, p.current_price || 0), 0) || 1
-
+    let ignore = false
+    setLoading(true); setFailed(false); setCompare(null)
+    Promise.all([getItemCompare(itemId), getItemOverview(itemId)]).then(([cmp, ov]) => {
+      if (ignore) return
+      setCompare(cmp); setItem(ov); setFailed(!cmp || !ov); setLoading(false)
+    })
+    return () => { ignore = true }
+  }, [itemId, reload])
+  const valid = compare?.platforms?.filter(p => Number.isFinite(p.current_price) && p.current_price > 0) || []
+  const maxPrice = Math.max(...valid.map(p => p.current_price), 1)
+  const fresh = valid.filter(p => !p.is_stale)
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-      <div className="flex items-center gap-1.5 text-xs text-[var(--text-dim)] mb-5">
-        <button onClick={() => navigate('/')} className="hover:text-[var(--text-secondary)] transition-colors">首页</button>
-        <CaretRight size={11} />
-        <span className="text-[var(--text-secondary)]">平台价格对比</span>
-      </div>
-
-      <h1 className="text-xl font-bold text-[var(--text-primary)] mb-6">平台价格对比</h1>
-
-      {/* Search */}
-      <div className="relative max-w-lg mb-8">
-        <div className="relative">
-          <MagnifyingGlass size={16} weight="bold" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)]" />
-          <input
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="搜索饰品进行对比..."
-            className="w-full min-h-[44px] bg-white/[0.05] border border-[var(--border-default)] text-[var(--text-primary)]
-              placeholder:text-[var(--text-dim)] rounded-[var(--radius-md)] pl-10 pr-4 py-3 text-sm outline-none
-              focus:border-[var(--accent-border)] transition-colors duration-150"
-          />
-        </div>
-        {suggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 rounded-[var(--radius-md)] border border-[var(--border-default)] overflow-hidden z-10"
-            style={{ background: 'var(--bg-surface-raised)', boxShadow: 'var(--shadow-lg)' }}>
-            {suggestions.map(s => (
-              <button
-                key={s.id}
-                onClick={() => { navigate(`/compare/${s.id}`); setSearchQuery(''); setSuggestions([]) }}
-                className="w-full text-left min-h-[52px] px-4 py-2.5 hover:bg-white/[0.05] border-b border-white/[0.04] last:border-0 transition-colors"
-              >
-                <p className="text-[var(--text-primary)] text-sm font-medium">{s.skin_name || s.item_name}</p>
-                <p className="text-[var(--text-dim)] text-xs mt-0.5">{s.weapon_type}</p>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {loading && (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--accent-border)', borderTopColor: 'var(--accent)' }} />
-        </div>
-      )}
-
-      {!loading && !compare && !itemId && (
-        <EmptyState icon={MagnifyingGlass} title="开始价格比较" sub="搜索饰品，查看跨平台价格差异" />
-      )}
-
-      {compare && item && !loading && (
-        <>
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-[var(--text-primary)]">{item.skin_name || item.item_name}</h2>
-            <p className="text-[var(--text-dim)] text-sm mt-1">
-              {item.weapon_type}{item.exterior ? ` · ${item.exterior}` : ''}{item.rarity ? ` · ${item.rarity}` : ''}
-            </p>
-          </div>
-
-          <div className="surface-card p-5 mb-6">
-            <p className="text-[var(--text-dim)] text-[11px] font-medium uppercase tracking-wide mb-4">当前价格可视化对比</p>
-            <div className="space-y-3">
-              {compare.platforms.map(p => {
-                const pct = maxPrice > 0 ? ((p.current_price || 0) / maxPrice) * 100 : 0
-                const color = PLATFORM_COLORS[p.platform] || 'var(--accent)'
-                return (
-                  <div key={p.platform} className="flex items-center gap-3">
-                    <span className="text-[var(--text-secondary)] text-sm w-20 shrink-0 truncate">{p.platform}</span>
-                    <div className="flex-1 bg-white/[0.06] rounded-full h-6 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, backgroundColor: color + '40', border: `1px solid ${color}60` }}
-                      />
-                    </div>
-                    <span className="price-display text-sm w-24 text-right shrink-0">
-                      {p.current_price != null ? formatCNY(p.current_price) : '—'}
-                    </span>
-                    {p.is_best_price && (
-                      <span className="text-xs rounded-[var(--radius-sm)] px-2 py-0.5 shrink-0" style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)', border: '1px solid var(--accent-border)' }}>最优</span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="surface-card p-5">
-            <PlatformComparisonTable platforms={compare.platforms} />
-          </div>
-
-          {compare.best_platform && (
-            <p className="text-[var(--text-secondary)] text-sm mt-4 text-center">
-              推荐在 <span className="font-semibold" style={{ color: 'var(--accent-strong)' }}>{compare.best_platform}</span> 购买以获得最优价格
-            </p>
-          )}
-        </>
-      )}
+    <div className="page-shell">
+      <div className="breadcrumb"><button onClick={() => navigate('/')}>饰品市场</button><CaretRight size={12} /><span>平台对比</span></div>
+      <div className="page-heading"><div><span className="eyebrow">PRICE COMPARISON</span><h1>同一饰品，比较不同报价。</h1><p>同时核对平台、来源与采集时间，价差未包含手续费与提现限制。</p></div></div>
+      <div className="max-w-xl mb-7"><SearchBar label="搜索对比饰品" placeholder="选择要对比的饰品…" onSelect={s => navigate(`/compare/${s.id}`)} /></div>
+      {loading ? <div className="surface-card p-6 space-y-5" role="status" aria-label="正在加载平台报价"><Skeleton h={26} w="50%" /><Skeleton h={160} /></div>
+        : failed ? <ErrorState message="平台报价暂时无法载入，请重试或选择其他饰品。" onRetry={() => setReload(n => n + 1)} />
+        : <>
+          <div className="page-heading"><div><h2 className="text-lg font-semibold">{item?.item_name}</h2><p>{[item?.weapon_type, item?.exterior, item?.rarity].filter(Boolean).join(' · ')}</p></div><Button onClick={() => navigate(`/item/${itemId}`)}>查看研究</Button></div>
+          {!valid.length ? <EmptyState icon={ArrowsLeftRight} title="暂无可比较的报价" sub="该饰品尚无有效平台报价，请先刷新行情。" /> : <>
+            <section className="surface-card p-5 sm:p-6 mb-5" aria-label="平台报价比较">
+              <h2 className="text-sm font-semibold mb-5">平台参考价格</h2>
+              {!fresh.length && <p className="notice notice-error">当前只有过期报价，更新行情后再比较价差。</p>}
+              <div className="compare-bars">{valid.map(p => <div key={p.platform}>
+                <div className="compare-bar-label"><strong>{p.platform} {p.is_best_price && <span className="source-badge source-observed ml-2 text-xs">最低参考价</span>}</strong><span className="price-display text-lg">{formatCNY(p.current_price)}</span></div>
+                <div className="compare-bar-track"><div style={{ width: `${p.current_price / maxPrice * 100}%`, background: PLATFORM_COLORS[p.platform] || 'var(--accent)' }} /></div>
+                <QuoteSource quote={p} />
+              </div>)}</div>
+            </section>
+            <section className="surface-card p-5 sm:p-6"><h2 className="text-sm font-semibold mb-3">指标与来源明细</h2><PlatformComparisonTable platforms={compare.platforms} /></section>
+            <p className="field-help">{fresh.length === 1 ? '当前只有一个平台的有效报价，暂不能判断跨平台价差。' : '最低参考价仅比较已载入且未过期的报价，不代表可成交价格或购买建议。'}</p>
+          </>}
+        </>}
     </div>
   )
 }

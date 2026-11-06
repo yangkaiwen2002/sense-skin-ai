@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -8,10 +8,11 @@ import {
   ChartLineUp,
   Lightning,
 } from "@phosphor-icons/react";
+import QuoteSource from "../components/QuoteSource";
 import SearchBar from "../components/SearchBar";
 import SkinImage from "../components/SkinImage";
 import OpportunityPanel from "../components/OpportunityPanel";
-import AskSense from "../components/AskSense";
+import NewsPanel from "../components/NewsPanel";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import Skeleton from "../components/ui/Skeleton";
@@ -23,6 +24,8 @@ import {
   getMarketEvents,
   seedDatabase,
   refreshPrices,
+  refreshEvents,
+  getMarketNews,
 } from "../services/api";
 import { formatCNY } from "../utils/formatters";
 import { RARITY_COLOR } from "../utils/constants";
@@ -40,7 +43,7 @@ function ItemCard({ item, onClick }) {
         />
       </div>
       <div className="market-item-info">
-        <h3>{item.item_name?.replace(/ \([^)]*\)$/, "") || item.skin_name}</h3>
+        <h3 title={item.item_name}>{item.item_name?.replace(/ \([^)]*\)$/, "") || item.skin_name}</h3>
         <p>
           {item.weapon_type} <span>·</span> {item.rarity}
         </p>
@@ -50,6 +53,7 @@ function ItemCard({ item, onClick }) {
           </strong>
           <span>{item.platform || "参考价"}</span>
         </div>
+        <QuoteSource quote={item} compact />
         <div className="market-item-link">
           查看行情与分析 <ArrowRight size={12} />
         </div>
@@ -62,11 +66,19 @@ export default function Home() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]),
     [opportunities, setOpp] = useState([]);
+  const [news, setNews] = useState([]);
+  const [newsFailed, setNewsFailed] = useState(false);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [opportunitiesFailed, setOpportunitiesFailed] = useState(false);
+  const [eventsFailed, setEventsFailed] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [actionNote, setActionNote] = useState("");
+  const loadVersion = useRef(0);
   const [summary, setSummary] = useState(null),
     [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(false);
-  const [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(""),
     [actionError, setActionError] = useState("");
   const [category, setCategory] = useState("all"),
     [exterior, setExterior] = useState("all"),
@@ -83,7 +95,8 @@ export default function Home() {
     const result = items.filter(
       (i) =>
         (category === "all" || i.weapon_type === category) &&
-        (exterior === "all" || i.exterior === exterior),
+        (exterior === "all" || i.exterior === exterior) &&
+        (sourceFilter === "all" || (sourceFilter === "legacy_unknown" ? !["observed", "demo"].includes(i.price_kind) : i.price_kind === sourceFilter)),
     );
     return sort === "default"
       ? result
@@ -98,99 +111,71 @@ export default function Home() {
                 ? a.current_price - b.current_price
                 : b.current_price - a.current_price,
         );
-  }, [items, category, exterior, sort]);
+  }, [items, category, exterior, sort, sourceFilter]);
   useEffect(() => {
     load();
+    return () => { loadVersion.current++; };
   }, []);
-  async function load() {
-    setLoading(true);
-    const [data, opp, sum, evt] = await Promise.all([
+  async function load(initial = true) {
+    const version = ++loadVersion.current;
+    if (initial) setLoading(true);
+    const [data, opp, sum, evt, official] = await Promise.all([
       getItems(50),
       getOpportunities(8),
       getMarketSummary(),
       getMarketEvents(),
+      getMarketNews(),
     ]);
+    if (version !== loadVersion.current) return;
     setLoadError(data === null);
-    setItems(data || []);
-    setOpp(opp?.opportunities || []);
-    setSummary(sum);
-    setEvents(evt?.events || []);
+    setNewsFailed(official === null);
+    if (data) setItems(data);
+    setOpportunitiesFailed(opp === null);
+    if (opp) setOpp(opp.opportunities || []);
+    if (sum) setSummary(sum);
+    setEventsFailed(evt === null);
+    if (evt) setEvents(evt.events || []);
+    if (official) setNews(official.events || []);
     setLoading(false);
   }
-  async function act(fn) {
-    setBusy(true);
-    setActionError("");
-    const result = await fn();
-    if (!result) setActionError("操作失败，请检查后端连接后重试。");
-    await load();
-    setBusy(false);
+  async function reloadNews() {
+    setNewsLoading(true);
+    const official = await getMarketNews();
+    setNewsFailed(official === null);
+    if (official) setNews(official.events || []);
+    setNewsLoading(false);
   }
-  const research = () =>
-    document
-      .getElementById("ask-sense-section")
-      ?.scrollIntoView({ behavior: "smooth" });
+  async function act(kind, fn) {
+    setBusy(kind);
+    setActionError("");
+    setActionNote("");
+    try {
+      const result = await fn();
+      if (!result || ["error", "busy", "partial"].includes(result.status)) {
+        setActionError(!result ? '操作暂时失败，请检查连接后重试。' : result.message || `部分来源未更新：成功 ${result.fetched || 0}，失败 ${result.failed || 0}。`);
+      } else {
+        setActionNote(kind === 'seed' ? '示例数据已载入，报价已标注为演示数据。'
+          : `已完成${kind === 'news' ? '新闻同步' : '价格刷新'}：${result.fetched ?? 0} 条，跳过 ${result.skipped ?? 0} 条。`);
+      }
+      if (kind === 'news') await reloadNews();
+      else await load(false);
+    } finally { setBusy(""); }
+  }
+  const research = () => navigate('/research');
   return (
     <div className="market-page">
       <div className="market-container">
-        <div className="market-page-heading">
-          <div>
-            <span className="game-label">CS2</span>
-            <h1>饰品市场</h1>
-            <span className="heading-caption">行情 · 发现 · 研究</span>
-          </div>
-          <div className="market-search">
-            <SearchBar />
-          </div>
+        <div className="workspace-heading">
+          <div><span className="eyebrow">COUNTER-STRIKE 2 / MARKET RESEARCH</span><h1>饰品市场</h1><p>浏览行情，核对来源，形成自己的判断。</p></div>
+          <div className="workspace-search"><SearchBar /><button className="text-action" onClick={research}><BookOpen size={15} />打开研究助手 <ArrowRight size={14} /></button></div>
         </div>
-        <div className="market-banner-grid">
-          <div className="market-banner">
-            <div className="banner-copy">
-              <span className="banner-eyebrow">SENSESKIN MARKET</span>
-              <h2>好饰品，也要看懂行情。</h2>
-              <p>价格趋势、平台比较、市场信号，一站查看。</p>
-              <button
-                onClick={() =>
-                  document
-                    .getElementById("market-catalog")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                探索饰品 <ArrowRight size={16} />
-              </button>
-            </div>
-            <div className="banner-art" aria-hidden="true">
-              {items[0] && (
-                <SkinImage
-                  iconUrl={items[0].icon_url}
-                  name={items[0].item_name}
-                />
-              )}
-              <span>COUNTER-STRIKE 2</span>
-            </div>
-          </div>
-          <button
-            className="research-promo"
-            onClick={research}
-            aria-label="打开研究助手"
-          >
-            <span className="research-promo-icon">
-              <BookOpen size={26} />
-            </span>
-            <span className="promo-kicker">ASK SENSE</span>
-            <strong>选饰品前，先问一问。</strong>
-            <span>租还是买？如何判断流动性？</span>
-            <b>
-              打开研究助手 <ArrowRight size={14} />
-            </b>
-          </button>
-        </div>
-        <div className="market-pulse">
+        <div className="market-context"><div className="market-pulse">
           <span className="pulse-heading">
             <ChartLineUp size={17} />
             市场概览
           </span>
           <span>
-            收录饰品 <b>{loading ? "—" : items.length}</b>
+            收录饰品 <b>{loading || (loadError && !items.length) ? "—" : items.length}</b>
           </span>
           <span>
             市场情绪 <b>{summary?.market_mood || "—"}</b>
@@ -199,21 +184,24 @@ export default function Home() {
             平均评分 <b>{summary?.avg_score ?? "—"}</b>
           </span>
           <span>
-            活跃事件 <b>{events.length}</b>
+            活跃事件 <b>{loading || eventsFailed ? "—" : events.length}</b>
           </span>
-          <small>研究原型 · 含示例与估算数据</small>
+          <small>研究原型 · 请核对报价来源与时间</small>
+        </div>
+        <NewsPanel news={news} loading={loading || newsLoading} failed={newsFailed} syncing={busy === 'news'} disabled={Boolean(busy) || newsLoading} onSync={() => act('news', refreshEvents)} onRetry={reloadNews} />
         </div>
         {loadError && (
           <ErrorState
-            message="暂时无法连接市场数据，请确认后端已启动后重试。"
-            onRetry={load}
+            message="暂时无法载入市场数据，请稍后重试。"
+            onRetry={() => load()}
           />
         )}
         {actionError && (
-          <p role="alert" className="text-[var(--avoid)] my-4">
+          <p role="alert" className="notice notice-error">
             {actionError}
           </p>
         )}
+        {actionNote && <p role="status" className="notice notice-success">{actionNote}</p>}
         {!loading && !loadError && !items.length && (
           <EmptyState
             icon={MagnifyingGlass}
@@ -222,8 +210,8 @@ export default function Home() {
             action={
               <Button
                 variant="primary"
-                loading={busy}
-                onClick={() => act(seedDatabase)}
+                loading={busy === "seed"} disabled={Boolean(busy)}
+                onClick={() => act("seed", seedDatabase)}
               >
                 初始化示例数据
               </Button>
@@ -237,11 +225,11 @@ export default function Home() {
             <Button
               size="sm"
               variant="ghost"
-              loading={busy}
-              onClick={() => act(refreshPrices)}
+              loading={busy === "prices"} disabled={Boolean(busy) || !items.length}
+              onClick={() => act("prices", refreshPrices)}
             >
               <ArrowsClockwise size={14} />
-              刷新价格
+              {busy === "prices" ? "正在刷新价格…" : "刷新价格"}
             </Button>
           </div>
           <div className="catalog-filters">
@@ -280,6 +268,10 @@ export default function Home() {
             <span>
               市场参考价格 <small>点击饰品查看数据与评分依据</small>
             </span>
+            <div className="catalog-selects">
+            <label>来源<select aria-label="报价来源" className="market-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}>
+              <option value="all">全部来源</option><option value="observed">采集报价</option><option value="demo">演示数据</option><option value="legacy_unknown">来源未核验</option>
+            </select></label>
             <label>
               排序{" "}
               <select
@@ -292,9 +284,9 @@ export default function Home() {
                 <option value="price-asc">价格从低到高</option>
                 <option value="price-desc">价格从高到低</option>
               </select>
-            </label>
+            </label></div>
           </div>
-          <div className="market-grid">
+          <div className="market-grid" aria-busy={loading}>
             {loading
               ? Array.from({ length: 12 }, (_, i) => (
                   <div className="surface-card p-3" key={i}>
@@ -317,6 +309,7 @@ export default function Home() {
                 onClick={() => {
                   setCategory("all");
                   setExterior("all");
+                  setSourceFilter("all");
                 }}
               >
                 清除筛选
@@ -331,9 +324,9 @@ export default function Home() {
                 <Lightning size={19} weight="fill" />
                 机会观察
               </h2>
-              <span>规则信号 · 查看支持与反对依据</span>
+              <span>规则信号 · 可能基于演示或未核验数据</span>
             </div>
-            <OpportunityPanel opportunities={opportunities} loading={loading} />
+            {opportunitiesFailed ? <ErrorState message="机会信号暂时无法载入" onRetry={() => load(false)} /> : <OpportunityPanel opportunities={opportunities} loading={loading} />}
           </section>
         )}
         {events.length > 0 && (
@@ -359,7 +352,7 @@ export default function Home() {
           </section>
         )}
         <div id="ask-sense-section" className="scroll-mt-24">
-          <AskSense />
+          <div className="surface-card p-5 flex flex-wrap items-center justify-between gap-4"><div><h2 className="font-semibold">让数据回答你的问题</h2><p className="muted-copy mt-1">带着目标进入研究工作台，核对报价、追踪证据并继续追问。</p></div><Button variant="primary" onClick={research}>打开研究工作台 <ArrowRight size={16} /></Button></div>
         </div>
         <footer className="market-footer">
           <strong>
