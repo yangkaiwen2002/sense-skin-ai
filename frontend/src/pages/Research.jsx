@@ -22,6 +22,7 @@ import {
 import { BASE_URL, getItemOverview } from "../services/api";
 import { consumeSSE } from "../utils/sse";
 import StructuredReport from "../components/StructuredReport";
+import ResearchMetrics from "../components/ResearchMetrics";
 import SearchBar from "../components/SearchBar";
 import QuoteSource from "../components/QuoteSource";
 import Button from "../components/ui/Button";
@@ -183,6 +184,7 @@ function Run({ run, onRetry, busy }) {
                 : "证据工作流"}
           </span>
         </div>
+        <ResearchMetrics run={run} />
         <details className="research-trace" open={run.status === "running"}>
           <summary>
             {run.status === "running" ? "正在执行研究" : "查看执行过程"} ·{" "}
