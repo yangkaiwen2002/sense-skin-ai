@@ -2,11 +2,13 @@ import QuoteSource from "./QuoteSource"
 import { formatCNY } from '../utils/formatters'
 import { PLATFORM_COLORS } from '../utils/constants'
 import EmptyState from './ui/EmptyState'
+import { priceComparison } from '../utils/quantitative'
 import { Table } from '@phosphor-icons/react'
 
 const HEADERS = ['平台', '当前价格', '7日均价', '买卖价差', '流动性', '溢价']
 
 export default function PlatformComparisonTable({ platforms = [] }) {
+  const comparison = priceComparison(platforms)
   if (!platforms.length) {
     return <EmptyState icon={Table} sub="暂无平台对比数据" />
   }
@@ -31,17 +33,21 @@ export default function PlatformComparisonTable({ platforms = [] }) {
           </tr>
         </thead>
         <tbody>
-          {platforms.map((p, i) => (
+          {platforms.map((p, i) => {
+            const eligible = comparison.eligible.includes(p)
+            const best = eligible && p.current_price === comparison.low
+            const premium = eligible && comparison.eligible.length >= 2 ? (p.current_price - comparison.low) / comparison.low * 100 : null
+            return (
             <tr
               key={p.platform}
               className={i < platforms.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}
-              style={{ background: p.is_best_price ? 'var(--accent-soft)' : 'transparent' }}
+              style={{ background: best ? 'var(--accent-soft)' : 'transparent' }}
             >
               <td className="px-3 py-2.5">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <div className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: PLATFORM_COLORS[p.platform] || 'var(--accent)' }} />
                   <span className="font-medium text-[var(--text-primary)]">{p.platform}</span>
-                  {p.is_best_price && (
+                  {best && (
                     <span className="text-[10px] rounded px-1 py-px" style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)', border: '1px solid var(--accent-border)' }}>最低参考价</span>
                   )}
                   {p.supports_rental && (
@@ -58,11 +64,11 @@ export default function PlatformComparisonTable({ platforms = [] }) {
               }}>
                 {p.liquidity_score != null ? p.liquidity_score.toFixed(0) : '—'}
               </td>
-              <td className="px-3 py-2.5 text-right font-tabular" style={{ color: p.price_vs_best_pct > 0 ? 'var(--gold)' : 'var(--text-dim)', fontWeight: p.price_vs_best_pct > 0 ? 600 : 400 }}>
-                {p.price_vs_best_pct != null ? (p.price_vs_best_pct === 0 ? '基准' : `+${p.price_vs_best_pct.toFixed(1)}%`) : '—'}
+              <td className="px-3 py-2.5 text-right font-tabular" style={{ color: premium > 0 ? 'var(--gold)' : 'var(--text-dim)', fontWeight: premium > 0 ? 600 : 400 }}>
+                {premium != null ? (premium === 0 ? '基准' : `+${premium.toFixed(1)}%`) : '—'}
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
       </div>

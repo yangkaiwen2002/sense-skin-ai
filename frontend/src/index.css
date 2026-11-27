@@ -3669,3 +3669,428 @@ textarea {
 .report-findings .inline-evidence {
   margin-left: 28px;
 }
+
+/* Quantitative views use explicit units and comparable scales. */
+.market-metrics {
+  margin: 0 0 20px;
+}
+.quant-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.quant-section-heading h2,
+.quant-section-heading h3 {
+  font-size: 14px;
+  font-weight: 650;
+}
+.quant-section-heading > span {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.quant-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.quant-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.quant-tile {
+  min-width: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  padding: 16px;
+}
+.quant-grid dt {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.quant-grid dd {
+  margin: 6px 0 10px;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  font-variant-numeric: tabular-nums;
+}
+.quant-grid dd small {
+  font-size: 11px;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.quant-grid dd.quant-money {
+  font-size: 27px;
+}
+.quant-tile p {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin-top: 6px;
+}
+.quant-tile-accent {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+.quant-tile-accent dd {
+  color: var(--accent-strong);
+}
+.quant-track {
+  height: 7px;
+  background: var(--bg-surface-sunken);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.quant-track > i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+.quant-source-stack {
+  display: flex;
+  height: 7px;
+  overflow: hidden;
+  background: var(--bg-surface-sunken);
+  border-radius: 3px;
+}
+.quant-source-observed {
+  background: var(--accent);
+}
+.quant-source-demo {
+  background: #d8a653;
+}
+.quant-source-stale {
+  background: #9d739d;
+}
+.quant-source-unknown {
+  background: #8894a6;
+}
+.quant-source-missing {
+  background: #c7ced8;
+}
+.quant-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 9px;
+}
+.quant-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.quant-legend i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+}
+.quant-distribution dt {
+  display: flex;
+  justify-content: space-between;
+}
+.quant-distribution dt span {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.quant-histogram {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.quant-histogram > div {
+  text-align: center;
+}
+.quant-histogram strong {
+  display: block;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.quant-histogram > div > div {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 42px;
+  border-bottom: 1px solid var(--border-default);
+}
+.quant-histogram i {
+  width: 70%;
+  display: block;
+  background: #90aaf1;
+  border-radius: 3px 3px 0 0;
+}
+.quant-histogram small {
+  display: block;
+  white-space: nowrap;
+  font-size: 9px;
+  margin-top: 5px;
+  color: var(--text-dim);
+}
+.quant-method {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-top: 10px;
+}
+.quant-method summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+.quant-method p {
+  margin-top: 6px;
+  max-width: 85ch;
+  line-height: 1.8;
+}
+.quant-loading,
+.quant-unavailable {
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.quant-price-rows {
+  display: grid;
+  gap: 22px;
+  margin: 24px 0 18px;
+}
+.quant-price-row-heading,
+.quant-delta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+.quant-price-row-heading {
+  margin-bottom: 8px;
+}
+.quant-price-row-heading strong {
+  font-size: 13px;
+}
+.quant-price-row-heading > span {
+  font-size: 19px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.quant-delta-row .quant-track {
+  flex: 1;
+}
+.quant-delta-row > span {
+  width: 170px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+.quant-price-row .quote-source {
+  margin-top: 6px;
+}
+.quant-note {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.price-quant.is-compact {
+  margin-bottom: 20px;
+}
+.is-compact .quant-tile {
+  padding: 12px;
+}
+.is-compact .quant-grid dd {
+  font-size: 22px;
+}
+.rental-quant {
+  padding: 22px;
+  border-bottom: 1px solid var(--border-default);
+}
+.rental-result {
+  scroll-margin-top: 120px;
+}
+.rental-quant-hero {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  padding: 20px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 10px;
+}
+.rental-quant-hero > div > span {
+  font-size: 12px;
+  color: var(--accent-strong);
+}
+.rental-quant-hero strong {
+  display: block;
+  font-size: 38px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--accent-strong);
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.rental-quant-hero > p {
+  font-size: 15px;
+  color: var(--accent-strong);
+}
+.rental-quant-hero small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 5px;
+}
+.rental-cost-bars {
+  display: grid;
+  gap: 15px;
+  margin: 22px 0;
+}
+.rental-cost-bars > div > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+.rental-cost-bars strong {
+  text-align: right;
+  font-size: 17px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.rental-cost-bars strong small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+.cost-bar-1 > i {
+  background: #8f9db8;
+}
+.rental-capital {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 16px;
+}
+.rental-capital > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.rental-capital strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+}
+.rental-capital p {
+  font-size: 12px;
+  margin-top: 7px;
+  color: var(--text-secondary);
+}
+.quant-track > .is-over-budget {
+  background: var(--avoid);
+}
+.rental-capital p.quant-deposit {
+  color: var(--gold-strong);
+  background: var(--gold-soft);
+  border: 1px solid var(--gold-border);
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-top: 12px;
+}
+.research-quant {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+.research-quant .quant-grid {
+  gap: 14px;
+}
+.research-quant dd {
+  font-size: 25px;
+  margin-bottom: 0;
+}
+.research-quant > p {
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  margin-top: 12px;
+}
+@media (max-width: 1100px) {
+  .market-quant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .research-quant .quant-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .quant-grid {
+    gap: 8px;
+  }
+  .quant-grid dd {
+    font-size: 27px;
+  }
+  .quant-grid dd.quant-money {
+    font-size: 22px;
+  }
+  .quant-tile {
+    padding: 12px;
+  }
+  .quant-grid-three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .quant-grid-three > :last-child {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 8px;
+    align-items: center;
+  }
+  .quant-grid-three > :last-child dd {
+    margin: 0;
+    grid-row: 1 / 3;
+    grid-column: 2;
+  }
+  .quant-grid-three > :last-child p {
+    margin: 0;
+  }
+  .quant-section-heading > span {
+    font-size: 10px;
+  }
+  .quant-delta-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .quant-delta-row .quant-track {
+    flex-basis: 100%;
+  }
+  .quant-delta-row > span {
+    width: auto;
+  }
+  .rental-quant {
+    padding: 16px;
+  }
+  .rental-quant-hero {
+    padding: 16px;
+    gap: 10px;
+  }
+  .rental-quant-hero strong {
+    font-size: 34px;
+  }
+  .quant-histogram {
+    gap: 3px;
+  }
+}

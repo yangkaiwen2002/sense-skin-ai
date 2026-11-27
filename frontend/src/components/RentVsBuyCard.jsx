@@ -1,4 +1,5 @@
 import { formatCNY } from '../utils/formatters'
+import RentalMetrics from './RentalMetrics'
 
 function Plan({ label, amount, sub, recommended, platform, pros, cons, children }) {
   return (
@@ -21,9 +22,10 @@ function Plan({ label, amount, sub, recommended, platform, pros, cons, children 
   )
 }
 
-export default function RentVsBuyCard({ rent_cost, buy_price, buy_affordable, rent_available, rent_affordable, deposit_required, buy_resale_loss, recommendation, explanation, days, rental_platform, buy_platform }) {
+export default function RentVsBuyCard({ rent_cost, buy_price, buy_affordable, rent_available, rent_affordable, deposit_required, buy_resale_loss, recommendation, explanation, days, budget, rental_platform, buy_platform }) {
   return (
     <div className="surface-card overflow-hidden p-0">
+      <RentalMetrics {...{rent_cost, buy_price, rent_available, deposit_required, buy_resale_loss, days, budget}} />
       {explanation && (
         <div className="px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)]">
           <h3 className="text-[var(--text-primary)] text-sm font-semibold mb-2">比较结论</h3>

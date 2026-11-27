@@ -9,6 +9,7 @@ import {
   Lightning,
 } from "@phosphor-icons/react";
 import QuoteSource from "../components/QuoteSource";
+import MarketMetrics from "../components/MarketMetrics";
 import SearchBar from "../components/SearchBar";
 import SkinImage from "../components/SkinImage";
 import OpportunityPanel from "../components/OpportunityPanel";
@@ -222,23 +223,18 @@ export default function Home() {
             </button>
           </div>
         </div>
+        <MarketMetrics items={visible} total={items.length} loading={loading} failed={loadError} />
         <div className="market-context">
           <div className="market-pulse">
             <span className="pulse-heading">
               <ChartLineUp size={17} />
-              市场概览
-            </span>
-            <span>
-              收录饰品{" "}
-              <b>
-                {loading || (loadError && !items.length) ? "—" : items.length}
-              </b>
+              规则观察
             </span>
             <span>
               市场情绪 <b>{summary?.market_mood || "—"}</b>
             </span>
             <span>
-              平均评分 <b>{summary?.avg_score ?? "—"}</b>
+              规则均分 <b>{summary?.avg_score ?? "—"} / 100</b>
             </span>
             <span>
               活跃事件 <b>{loading || eventsFailed ? "—" : events.length}</b>
@@ -393,6 +389,7 @@ export default function Home() {
                   setCategory("all");
                   setExterior("all");
                   setSourceFilter("all");
+                  filter("q", "");
                 }}
               >
                 清除筛选

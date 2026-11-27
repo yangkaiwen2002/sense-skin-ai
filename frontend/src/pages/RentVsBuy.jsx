@@ -17,6 +17,12 @@ export default function RentVsBuy() {
   const [result, setResult] = useState(null), [loading, setLoading] = useState(false), [error, setError] = useState('')
   const [selecting, setSelecting] = useState(false)
   const version = useRef(0)
+  const resultRef = useRef(null)
+  useEffect(() => {
+    if (!result) return
+    resultRef.current?.focus({ preventScroll: true })
+    resultRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+  }, [result])
   useEffect(() => {
     let ignore = false
     version.current++
@@ -75,7 +81,7 @@ export default function RentVsBuy() {
           </fieldset>
         </form>
         {error && <p role="alert" className="notice notice-error">{error}</p>}
-        {result && <section className="mt-6" aria-label="租买分析结果" aria-live="polite">
+        {result && <section ref={resultRef} tabIndex={-1} className="mt-6 rental-result" aria-label="租买分析结果" aria-live="polite">
           <div className="flex items-center gap-2 mb-3"><CheckCircle size={19} className="text-[var(--accent)]" /><h2 className="text-base font-semibold">{result.days} 天使用方案</h2></div>
           <p className="muted-copy mb-3">{result.item_name} · 预算 {formatCNY(result.budget)}</p>
           <RentVsBuyCard {...result} />

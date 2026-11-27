@@ -25,6 +25,7 @@ import DecisionPanel from "../components/DecisionPanel";
 import { formatCNY } from "../utils/formatters";
 import { RARITY_COLOR } from "../utils/constants";
 import PlatformComparisonTable from "../components/PlatformComparisonTable";
+import PriceComparisonMetrics from "../components/PriceComparisonMetrics";
 import EventTimeline from "../components/EventTimeline";
 
 
@@ -359,7 +360,7 @@ export default function ItemDetail() {
             </section>
             <section id="comparison" className="surface-card p-4 sm:p-5 analysis-section">
               <CardHeader title="平台报价" sub="核对来源、采集时间与费用后，再比较价格。" />
-              {compare ? <PlatformComparisonTable platforms={compare.platforms} /> : <ErrorState message="平台报价加载失败" onRetry={() => setReload(n => n + 1)} />}
+              {compare ? <><PriceComparisonMetrics platforms={compare.platforms} compact /><PlatformComparisonTable platforms={compare.platforms} /></> : <ErrorState message="平台报价加载失败" onRetry={() => setReload(n => n + 1)} />}
               <Button variant="ghost" className="mt-3" onClick={() => navigate(`/compare/${id}`)}>打开完整平台对比 →</Button>
             </section>
             <section id="events" className="surface-card p-4 sm:p-5 analysis-section">
