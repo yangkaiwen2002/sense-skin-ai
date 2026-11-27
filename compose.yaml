@@ -1,0 +1,49 @@
+services:
+  ollama:
+    image: ollama/ollama:0.40.18
+    environment:
+      OLLAMA_NO_CLOUD: '1'
+    volumes:
+      - models:/root/.ollama
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  model-init:
+    image: ollama/ollama:0.40.18
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: [ollama, pull, 'qwen3:4b']
+    depends_on:
+      ollama:
+        condition: service_healthy
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite:////data/senseskin-demo.db
+      DATA_MODE: mock
+      AI_PROVIDER: ollama
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen3:4b
+      FRONTEND_URL: http://localhost:8080
+    volumes:
+      - workspace:/data
+    depends_on:
+      model-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+  frontend:
+    build: ./frontend
+    ports:
+      - 127.0.0.1:8080:80
+    depends_on:
+      backend:
+        condition: service_healthy
+volumes:
+  workspace:
+  models:

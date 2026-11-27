@@ -44,3 +44,5 @@ npm-debug.log*
 # Local test and evaluation artifacts
 .pytest_cache/
 backend/evaluation/ci-results.json
+.runtime/
+backend/evaluation/latest.json

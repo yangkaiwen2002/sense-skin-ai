@@ -33,7 +33,7 @@ class StartRun(BaseModel):
 
 def session_summary(row):
     return {"id": row.id, "title": row.title, "item_ids": row.item_ids,
-            "active_run_id": row.active_run_id, "updated_at": utc(row.updated_at)}
+            "archived": row.archived, "active_run_id": row.active_run_id, "updated_at": utc(row.updated_at)}
 
 
 def get_session(db, session_id):
@@ -53,9 +53,9 @@ def get_session(db, session_id):
 
 @router.get("/status")
 def status():
-    return {"model": model_status(), "sources": [
-        {"id": "steam", "label": "Steam 行情", "status": "available", "detail": f"按精确名称采集，已映射 {len(MARKET_NAMES)} 件目录饰品；可用性取决于来源响应。"},
-        {"id": "news", "label": "CS2 官方公告", "status": "available", "detail": "Steam 官方新闻；公告影响仍待评估。"},
+    return {"data_mode": settings.DATA_MODE, "model": model_status(), "sources": [
+        {"id": "steam", "label": "Steam 行情", "status": "demo" if settings.DATA_MODE == "mock" else "available", "detail": "Mock 模式未请求真实来源。" if settings.DATA_MODE == "mock" else f"按精确名称采集，已映射 {len(MARKET_NAMES)} 件目录饰品；可用性取决于来源响应。"},
+        {"id": "news", "label": "CS2 事件", "status": "demo" if settings.DATA_MODE == "mock" else "available", "detail": "Mock 模式使用演示事件，不是真实官方公告。" if settings.DATA_MODE == "mock" else "Steam 官方新闻；公告影响仍待评估。"},
         {"id": "buff", "label": "BUFF 行情", "status": "configured" if settings.BUFF_COOKIE and settings.BUFF_GOODS_IDS else "not_configured", "detail": "需要账户凭据与精确商品映射。"},
         {"id": "rental", "label": "租赁报价", "status": "demo", "detail": "尚未接入真实租赁报价。"},
         {"id": "knowledge", "label": "研究知识库", "status": "available", "detail": "静态资料；检索结果中的历史价格不代表当前行情。"},
@@ -63,8 +63,8 @@ def status():
 
 
 @router.get("/sessions")
-def list_sessions(db: Session = Depends(get_db)):
-    rows = db.query(ResearchSession).order_by(ResearchSession.updated_at.desc()).limit(50).all()
+def list_sessions(archived: bool = False, db: Session = Depends(get_db)):
+    rows = db.query(ResearchSession).filter(ResearchSession.archived == archived).order_by(ResearchSession.updated_at.desc()).limit(50).all()
     return {"sessions": [session_summary(row) for row in rows]}
 
 
@@ -92,6 +92,8 @@ def start_run(request: Request, session_id: UUID, req: StartRun, db: Session = D
     if not question:
         raise HTTPException(422, "请输入研究问题")
     row = get_session(db, session_id)
+    if row.archived:
+        raise HTTPException(409, "请先在研究库恢复已归档会话")
     existing = db.query(ResearchRun).filter_by(session_id=row.id, request_id=str(req.request_id)).first()
     if existing:
         if existing.status == "running":
@@ -127,3 +129,22 @@ def artifact(run_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(404, "研究产物尚未生成")
     return Response(run.artifact["text"], media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="senseskin-research-{run.id}.md"'})
+
+
+class UpdateSession(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    archived: bool | None = None
+
+
+@router.patch("/sessions/{session_id}")
+def update_session(session_id: UUID, req: UpdateSession, db: Session = Depends(get_db)):
+    row = get_session(db, session_id)
+    if row.active_run_id:
+        raise HTTPException(409, "研究进行中，请完成后再管理会话")
+    if req.title is not None:
+        if not req.title.strip(): raise HTTPException(422, "标题不能为空")
+        row.title = req.title.strip()
+    if req.archived is not None: row.archived = req.archived
+    row.updated_at = datetime.utcnow()
+    db.commit()
+    return session_summary(row)

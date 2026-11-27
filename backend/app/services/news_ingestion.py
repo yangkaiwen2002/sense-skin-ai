@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 import httpx
 from sqlalchemy.orm import Session
 from app.models.source_news import SourceNews
+from app.config import settings
 
 NEWS_URL = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
 _lock = asyncio.Lock()
@@ -32,6 +33,8 @@ def normalize_news(raw, now):
 
 
 async def refresh_news(db: Session):
+    if settings.DATA_MODE == "mock":
+        return {"status": "success", "fetched": 0, "message": "Mock 模式使用演示事件，未请求官方接口"}
     if _lock.locked():
         return {"status": "busy", "message": "新闻刷新已在进行中"}
     async with _lock:
@@ -71,6 +74,9 @@ async def refresh_news(db: Session):
 
 
 def get_news(db: Session, days=90):
+    if settings.DATA_MODE == "mock":
+        from app.services.demo_data import mock_news
+        return mock_news()
     now = datetime.utcnow()
     rows = db.query(SourceNews).filter(
         SourceNews.published_at >= now - timedelta(days=days), SourceNews.published_at <= now,

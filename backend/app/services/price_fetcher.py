@@ -102,6 +102,9 @@ async def refresh_item_prices(db: Session, item_ids: list[int]) -> dict:
 
 
 async def _refresh(db: Session, item_ids: list[int] | None = None) -> dict:
+    if settings.DATA_MODE == "mock":
+        from app.services.demo_data import refresh_mock
+        return refresh_mock(db, item_ids)
     query = db.query(Item)
     if item_ids is not None:
         query = query.filter(Item.id.in_(item_ids))
