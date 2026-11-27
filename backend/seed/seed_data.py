@@ -16,10 +16,11 @@ from app.models.market_event import MarketEvent, EventTag
 import app.models  # noqa: ensure all models registered
 
 
-def random_walk(base: float, days: int, volatility: float = 0.02) -> list[float]:
+def random_walk(base: float, days: int, volatility: float = 0.02, rng=None) -> list[float]:
+    rng = rng or random.Random(730)
     prices = [base]
     for _ in range(days - 1):
-        change = random.gauss(0, volatility)
+        change = rng.gauss(0, volatility)
         new_price = prices[-1] * (1 + change)
         prices.append(round(max(new_price, base * 0.5), 2))
     return prices
@@ -28,6 +29,8 @@ def random_walk(base: float, days: int, volatility: float = 0.02) -> list[float]
 def seed(db: Session) -> dict:
     if db.query(Item).count() > 0:
         return {"status": "already_seeded", "message": "Database already contains data."}
+
+    rng = random.Random(730)
 
     # --- Platforms ---
     platforms_data = [
@@ -304,7 +307,7 @@ def seed(db: Session) -> dict:
     days = 35
 
     for item, base_price, volatility in items:
-        buff_prices = random_walk(base_price, days, volatility=volatility)
+        buff_prices = random_walk(base_price, days, volatility=volatility, rng=rng)
         # Simulate upward trend in last 7 days for rare/expensive items
         if item.rarity in ("隐秘", "违禁"):
             for i in range(days - 7, days):
@@ -315,10 +318,10 @@ def seed(db: Session) -> dict:
             for day_idx in range(days):
                 snap_time = now - timedelta(days=days - day_idx - 1)
                 listing = round(buff_prices[day_idx] * mult, 2)
-                buy_order = round(listing * random.uniform(0.94, 0.98), 2)
+                buy_order = round(listing * rng.uniform(0.94, 0.98), 2)
                 spread = round(listing - buy_order, 2)
-                volume = random.randint(5, 80) if platform == buff else random.randint(1, 20)
-                depth = random.randint(10, 100)
+                volume = rng.randint(5, 80) if platform == buff else rng.randint(1, 20)
+                depth = rng.randint(10, 100)
 
                 snap = PriceSnapshot(
                     item_id=item.id,
@@ -339,7 +342,7 @@ def seed(db: Session) -> dict:
         for rental_platform in [youpin, igxe]:
             for day_idx in range(days):
                 snap_time = now - timedelta(days=days - day_idx - 1)
-                daily_rate = round(buff_prices[day_idx] * random.uniform(0.006, 0.01), 2)
+                daily_rate = round(buff_prices[day_idx] * rng.uniform(0.006, 0.01), 2)
                 weekly_rate = round(daily_rate * 7 * 0.85, 2)
                 snap = RentalSnapshot(
                     item_id=item.id,
@@ -347,7 +350,7 @@ def seed(db: Session) -> dict:
                     snapshot_time=snap_time,
                     daily_rental_price=daily_rate,
                     weekly_rental_price=weekly_rate,
-                    available_count=random.randint(2, 15),
+                    available_count=rng.randint(2, 15),
                     deposit_required=True,
                     currency="CNY",
                 )
@@ -406,6 +409,9 @@ def seed(db: Session) -> dict:
 
     for ed in events_data:
         tags = ed.pop("tags")
+        ed["title"] = "[演示] " + ed["title"]
+        ed["source"] = "Mock 场景（非真实公告）"
+        ed["summary"] = "虚构场景，仅用于功能演示。" + ed["summary"]
         event = MarketEvent(**ed)
         db.add(event)
         db.flush()

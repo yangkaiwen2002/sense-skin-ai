@@ -12,10 +12,10 @@ from app.database import engine, get_db, Base, SessionLocal
 import app.models  # noqa: register all models
 
 from app.limiter import limiter
-from app.routers import items, analytics, compare, rental, reports, buff, chat, rag, scoring, research
+from app.routers import items, analytics, compare, rental, reports, buff, chat, rag, scoring, research, workspace
 from app.services.price_fetcher import refresh_all_prices
 from app.services.news_ingestion import refresh_news, get_news
-from app.schema_updates import ensure_price_provenance
+from app.schema_updates import ensure_price_provenance, ensure_workspace_schema
 
 async def _scheduled_refresh():
     db: Session = SessionLocal()
@@ -30,8 +30,13 @@ async def _scheduled_refresh():
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_price_provenance(engine)
+    ensure_workspace_schema(engine)
+    if settings.DATA_MODE == "mock":
+        from seed.seed_data import seed
+        with SessionLocal() as db:
+            seed(db)
     scheduler = AsyncIOScheduler()
-    if settings.ENABLE_MARKET_SYNC:
+    if settings.ENABLE_MARKET_SYNC and settings.DATA_MODE == "live":
         scheduler.add_job(_scheduled_refresh, "interval", minutes=15, id="market_refresh", max_instances=1)
         scheduler.start()
     try:
@@ -65,6 +70,7 @@ app.include_router(chat.router, prefix="/api")
 app.include_router(rag.router, prefix="/api")
 app.include_router(scoring.router, prefix="/api")
 app.include_router(research.router, prefix="/api")
+app.include_router(workspace.router, prefix="/api")
 
 
 @app.get("/")

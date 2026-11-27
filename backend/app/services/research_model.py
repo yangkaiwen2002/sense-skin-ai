@@ -13,6 +13,8 @@ def model_config():
 
 
 def model_status():
+    if settings.AI_PROVIDER == "ollama":
+        return {"configured": True, "provider": "ollama", "model": settings.OLLAMA_MODEL, "mode": "generated", "local": True}
     key, model, _ = model_config()
     return {"configured": bool(key and model), "provider": settings.AI_PROVIDER,
             "model": model or None, "mode": "generated" if key and model else "evidence_only"}

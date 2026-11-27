@@ -6,7 +6,10 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./skinsense.db"
     CLAUDE_API_KEY: str = ""
-    AI_PROVIDER: Literal["anthropic", "openai"] = "anthropic"
+    AI_PROVIDER: Literal["anthropic", "openai", "ollama"] = "anthropic"
+    DATA_MODE: Literal["live", "mock"] = "live"
+    OLLAMA_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_MODEL: str = "qwen3:4b"
     AI_API_KEY: str = ""
     AI_BASE_URL: str = ""
     AI_MODEL: str = ""

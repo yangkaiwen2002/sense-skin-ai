@@ -151,17 +151,17 @@ def decide(
     if total >= 74:
         pts = 2.0
         bullish += pts
-        evidence_log.append(_sig("+", pts, "综合评分优秀", f"AI 综合评分 {total}/100（阈值: 74+）"))
+        evidence_log.append(_sig("+", pts, "综合评分优秀", f"规则综合评分 {total}/100（阈值: 74+）"))
     elif total >= 62:
         pts = 1.0
         bullish += pts
-        evidence_log.append(_sig("+", pts, "综合评分良好", f"AI 综合评分 {total}/100"))
+        evidence_log.append(_sig("+", pts, "综合评分良好", f"规则综合评分 {total}/100"))
     elif total <= 40:
         pts = 2.0
         bearish += pts
-        evidence_log.append(_sig("-", pts, "综合评分较低", f"AI 综合评分 {total}/100，多维度数据偏弱"))
+        evidence_log.append(_sig("-", pts, "综合评分较低", f"规则综合评分 {total}/100，多维度数据偏弱"))
     else:
-        evidence_log.append(_sig("=", 0, "综合评分中等", f"AI 综合评分 {total}/100"))
+        evidence_log.append(_sig("=", 0, "综合评分中等", f"规则综合评分 {total}/100"))
 
     # ── 6. Risk label penalties ────────────────────────────────────────────────
     for risk in risk_lbl[:3]:
@@ -321,7 +321,7 @@ def _build_rationale(
 
 
 def _collect_sources(em: EventMapping) -> list[str]:
-    srcs = {"BUFF163 价格数据库（35 天历史）", "AI 综合评分模型（7 维度）"}
+    srcs = {"已载入行情快照（以来源标签为准）", "七维规则评分（未调用模型）"}
     for e in em.relevant_events[:4]:
         if e.source and e.source not in ("community", "market_pattern"):
             srcs.add(e.source)

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
@@ -43,7 +43,9 @@ function ItemCard({ item, onClick }) {
         />
       </div>
       <div className="market-item-info">
-        <h3 title={item.item_name}>{item.item_name?.replace(/ \([^)]*\)$/, "") || item.skin_name}</h3>
+        <h3 title={item.item_name}>
+          {item.item_name?.replace(/ \([^)]*\)$/, "") || item.skin_name}
+        </h3>
         <p>
           {item.weapon_type} <span>·</span> {item.rarity}
         </p>
@@ -64,6 +66,26 @@ function ItemCard({ item, onClick }) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const category = params.get("category") || "all",
+    exterior = params.get("exterior") || "all",
+    sort = params.get("sort") || "default",
+    sourceFilter = params.get("source") || "all",
+    query = params.get("q") || "";
+  const filter = (key, value) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (!value || value === "all" || value === "default") next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
+  const setCategory = (value) => filter("category", value),
+    setExterior = (value) => filter("exterior", value),
+    setSort = (value) => filter("sort", value),
+    setSourceFilter = (value) => filter("source", value);
   const [items, setItems] = useState([]),
     [opportunities, setOpp] = useState([]);
   const [news, setNews] = useState([]);
@@ -71,7 +93,6 @@ export default function Home() {
   const [newsLoading, setNewsLoading] = useState(false);
   const [opportunitiesFailed, setOpportunitiesFailed] = useState(false);
   const [eventsFailed, setEventsFailed] = useState(false);
-  const [sourceFilter, setSourceFilter] = useState("all");
   const [actionNote, setActionNote] = useState("");
   const loadVersion = useRef(0);
   const [summary, setSummary] = useState(null),
@@ -80,9 +101,6 @@ export default function Home() {
     [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(""),
     [actionError, setActionError] = useState("");
-  const [category, setCategory] = useState("all"),
-    [exterior, setExterior] = useState("all"),
-    [sort, setSort] = useState("default");
   const categories = useMemo(
     () => [...new Set(items.map((i) => i.weapon_type).filter(Boolean))],
     [items],
@@ -94,9 +112,13 @@ export default function Home() {
   const visible = useMemo(() => {
     const result = items.filter(
       (i) =>
+        i.item_name.toLowerCase().includes(query.toLowerCase()) &&
         (category === "all" || i.weapon_type === category) &&
         (exterior === "all" || i.exterior === exterior) &&
-        (sourceFilter === "all" || (sourceFilter === "legacy_unknown" ? !["observed", "demo"].includes(i.price_kind) : i.price_kind === sourceFilter)),
+        (sourceFilter === "all" ||
+          (sourceFilter === "legacy_unknown"
+            ? !["observed", "demo"].includes(i.price_kind)
+            : i.price_kind === sourceFilter)),
     );
     return sort === "default"
       ? result
@@ -111,10 +133,12 @@ export default function Home() {
                 ? a.current_price - b.current_price
                 : b.current_price - a.current_price,
         );
-  }, [items, category, exterior, sort, sourceFilter]);
+  }, [items, category, exterior, sort, sourceFilter, query]);
   useEffect(() => {
     load();
-    return () => { loadVersion.current++; };
+    return () => {
+      loadVersion.current++;
+    };
   }, []);
   async function load(initial = true) {
     const version = ++loadVersion.current;
@@ -152,43 +176,84 @@ export default function Home() {
     try {
       const result = await fn();
       if (!result || ["error", "busy", "partial"].includes(result.status)) {
-        setActionError(!result ? '操作暂时失败，请检查连接后重试。' : result.message || `部分来源未更新：成功 ${result.fetched || 0}，失败 ${result.failed || 0}。`);
+        setActionError(
+          !result
+            ? "操作暂时失败，请检查连接后重试。"
+            : result.message ||
+                `部分来源未更新：成功 ${result.fetched || 0}，失败 ${result.failed || 0}。`,
+        );
       } else {
-        setActionNote(kind === 'seed' ? '示例数据已载入，报价已标注为演示数据。'
-          : `已完成${kind === 'news' ? '新闻同步' : '价格刷新'}：${result.fetched ?? 0} 条，跳过 ${result.skipped ?? 0} 条。`);
+        setActionNote(
+          result.message ||
+            (kind === "seed"
+              ? "示例数据已载入，报价已标注为演示数据。"
+              : `已完成${kind === "news" ? "新闻同步" : "价格刷新"}：${result.fetched ?? 0} 条，跳过 ${result.skipped ?? 0} 条。`),
+        );
       }
-      if (kind === 'news') await reloadNews();
+      if (kind === "news") await reloadNews();
       else await load(false);
-    } finally { setBusy(""); }
+    } finally {
+      setBusy("");
+    }
   }
-  const research = () => navigate('/research');
+  const research = () => navigate("/research");
   return (
     <div className="market-page">
       <div className="market-container">
         <div className="workspace-heading">
-          <div><span className="eyebrow">COUNTER-STRIKE 2 / MARKET RESEARCH</span><h1>饰品市场</h1><p>浏览行情，核对来源，形成自己的判断。</p></div>
-          <div className="workspace-search"><SearchBar /><button className="text-action" onClick={research}><BookOpen size={15} />打开研究助手 <ArrowRight size={14} /></button></div>
+          <div>
+            <span className="eyebrow">COUNTER-STRIKE 2 / MARKET RESEARCH</span>
+            <h1>饰品市场</h1>
+            <p>浏览行情，核对来源，形成自己的判断。</p>
+          </div>
+          <div className="workspace-search">
+            <label className="search-field">
+              <MagnifyingGlass size={19} />
+              <span className="sr-only">搜索市场饰品</span>
+              <input
+                placeholder="搜索饰品、武器或皮肤名称…"
+                value={query}
+                onChange={(e) => filter("q", e.target.value)}
+              />
+            </label>
+            <button className="text-action" onClick={research}>
+              <BookOpen size={15} />
+              打开研究助手 <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
-        <div className="market-context"><div className="market-pulse">
-          <span className="pulse-heading">
-            <ChartLineUp size={17} />
-            市场概览
-          </span>
-          <span>
-            收录饰品 <b>{loading || (loadError && !items.length) ? "—" : items.length}</b>
-          </span>
-          <span>
-            市场情绪 <b>{summary?.market_mood || "—"}</b>
-          </span>
-          <span>
-            平均评分 <b>{summary?.avg_score ?? "—"}</b>
-          </span>
-          <span>
-            活跃事件 <b>{loading || eventsFailed ? "—" : events.length}</b>
-          </span>
-          <small>研究原型 · 请核对报价来源与时间</small>
-        </div>
-        <NewsPanel news={news} loading={loading || newsLoading} failed={newsFailed} syncing={busy === 'news'} disabled={Boolean(busy) || newsLoading} onSync={() => act('news', refreshEvents)} onRetry={reloadNews} />
+        <div className="market-context">
+          <div className="market-pulse">
+            <span className="pulse-heading">
+              <ChartLineUp size={17} />
+              市场概览
+            </span>
+            <span>
+              收录饰品{" "}
+              <b>
+                {loading || (loadError && !items.length) ? "—" : items.length}
+              </b>
+            </span>
+            <span>
+              市场情绪 <b>{summary?.market_mood || "—"}</b>
+            </span>
+            <span>
+              平均评分 <b>{summary?.avg_score ?? "—"}</b>
+            </span>
+            <span>
+              活跃事件 <b>{loading || eventsFailed ? "—" : events.length}</b>
+            </span>
+            <small>研究原型 · 请核对报价来源与时间</small>
+          </div>
+          <NewsPanel
+            news={news}
+            loading={loading || newsLoading}
+            failed={newsFailed}
+            syncing={busy === "news"}
+            disabled={Boolean(busy) || newsLoading}
+            onSync={() => act("news", refreshEvents)}
+            onRetry={reloadNews}
+          />
         </div>
         {loadError && (
           <ErrorState
@@ -201,7 +266,11 @@ export default function Home() {
             {actionError}
           </p>
         )}
-        {actionNote && <p role="status" className="notice notice-success">{actionNote}</p>}
+        {actionNote && (
+          <p role="status" className="notice notice-success">
+            {actionNote}
+          </p>
+        )}
         {!loading && !loadError && !items.length && (
           <EmptyState
             icon={MagnifyingGlass}
@@ -210,7 +279,8 @@ export default function Home() {
             action={
               <Button
                 variant="primary"
-                loading={busy === "seed"} disabled={Boolean(busy)}
+                loading={busy === "seed"}
+                disabled={Boolean(busy)}
                 onClick={() => act("seed", seedDatabase)}
               >
                 初始化示例数据
@@ -225,7 +295,8 @@ export default function Home() {
             <Button
               size="sm"
               variant="ghost"
-              loading={busy === "prices"} disabled={Boolean(busy) || !items.length}
+              loading={busy === "prices"}
+              disabled={Boolean(busy) || !items.length}
               onClick={() => act("prices", refreshPrices)}
             >
               <ArrowsClockwise size={14} />
@@ -269,22 +340,34 @@ export default function Home() {
               市场参考价格 <small>点击饰品查看数据与评分依据</small>
             </span>
             <div className="catalog-selects">
-            <label>来源<select aria-label="报价来源" className="market-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}>
-              <option value="all">全部来源</option><option value="observed">采集报价</option><option value="demo">演示数据</option><option value="legacy_unknown">来源未核验</option>
-            </select></label>
-            <label>
-              排序{" "}
-              <select
-                aria-label="价格排序"
-                className="market-select"
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-              >
-                <option value="default">默认顺序</option>
-                <option value="price-asc">价格从低到高</option>
-                <option value="price-desc">价格从高到低</option>
-              </select>
-            </label></div>
+              <label>
+                来源
+                <select
+                  aria-label="报价来源"
+                  className="market-select"
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                >
+                  <option value="all">全部来源</option>
+                  <option value="observed">采集报价</option>
+                  <option value="demo">演示数据</option>
+                  <option value="legacy_unknown">来源未核验</option>
+                </select>
+              </label>
+              <label>
+                排序{" "}
+                <select
+                  aria-label="价格排序"
+                  className="market-select"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                >
+                  <option value="default">默认顺序</option>
+                  <option value="price-asc">价格从低到高</option>
+                  <option value="price-desc">价格从高到低</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div className="market-grid" aria-busy={loading}>
             {loading
@@ -326,7 +409,17 @@ export default function Home() {
               </h2>
               <span>规则信号 · 可能基于演示或未核验数据</span>
             </div>
-            {opportunitiesFailed ? <ErrorState message="机会信号暂时无法载入" onRetry={() => load(false)} /> : <OpportunityPanel opportunities={opportunities} loading={loading} />}
+            {opportunitiesFailed ? (
+              <ErrorState
+                message="机会信号暂时无法载入"
+                onRetry={() => load(false)}
+              />
+            ) : (
+              <OpportunityPanel
+                opportunities={opportunities}
+                loading={loading}
+              />
+            )}
           </section>
         )}
         {events.length > 0 && (
@@ -352,7 +445,17 @@ export default function Home() {
           </section>
         )}
         <div id="ask-sense-section" className="scroll-mt-24">
-          <div className="surface-card p-5 flex flex-wrap items-center justify-between gap-4"><div><h2 className="font-semibold">让数据回答你的问题</h2><p className="muted-copy mt-1">带着目标进入研究工作台，核对报价、追踪证据并继续追问。</p></div><Button variant="primary" onClick={research}>打开研究工作台 <ArrowRight size={16} /></Button></div>
+          <div className="surface-card p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-semibold">让数据回答你的问题</h2>
+              <p className="muted-copy mt-1">
+                带着目标进入研究工作台，核对报价、追踪证据并继续追问。
+              </p>
+            </div>
+            <Button variant="primary" onClick={research}>
+              打开研究工作台 <ArrowRight size={16} />
+            </Button>
+          </div>
         </div>
         <footer className="market-footer">
           <strong>
